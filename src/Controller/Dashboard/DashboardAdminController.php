@@ -25,7 +25,8 @@ class DashboardAdminController extends AbstractController
          $this->adminDashboardManager = $adminDashboardManager;
     }
     
-    #[Route("/", name: "index_admin_dashboard", methods: ["GET"])]
+    #[Route("", name: "index_admin_dashboard", methods: ["GET"])]
+    #[Route("/", name: "index_admin_dashboard_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/admin/dashboard",
         summary: "tableau de bord admin",

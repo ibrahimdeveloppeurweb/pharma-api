@@ -35,7 +35,8 @@ class MedicamentController extends AbstractController
         $this->pharmacieRepository = $pharmacieRepository;
     }
     
-    #[Route("/", name: "index_medicament", methods: ["GET"])]
+    #[Route("", name: "index_medicament", methods: ["GET"])]
+    #[Route("/", name: "index_medicament_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/pharmacie/medicament",
         summary: "Liste des médicaments",

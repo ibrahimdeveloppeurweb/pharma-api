@@ -5,6 +5,11 @@ framework:
     http_method_override: false
     handle_all_throwables: true
 
+    # Derrière Caddy/Traefik en ligne : sans ça, Symfony croit être en http et ses
+    # redirections pointent vers http:// (l'appli perd alors son jeton). Vide en local.
+    trusted_proxies: '%env(default::TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-host']
+
     # Enables session support. Note that the session will ONLY be started if you read or write from it.
     # Remove or comment this section to explicitly disable session support.
     session:

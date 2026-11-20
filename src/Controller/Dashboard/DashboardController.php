@@ -26,7 +26,8 @@ class DashboardController extends AbstractController
          $this->dashboardManager = $dashboardManager;
     }
     
-    #[Route("/", name: "index_dashboard", methods: ["GET"])]
+    #[Route("", name: "index_dashboard", methods: ["GET"])]
+    #[Route("/", name: "index_dashboard_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/pharmacie/dashboard",
         summary: "tableau de bord pharmacie",

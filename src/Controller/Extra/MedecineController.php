@@ -148,7 +148,8 @@ class MedecineController extends AbstractController
         }
     }
     
-    #[Route("/", name: "index_medecine", methods: ["GET"])]
+    #[Route("", name: "index_medecine", methods: ["GET"])]
+    #[Route("/", name: "index_medecine_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/medecine",
         summary: "Liste des medecines avec pagination",

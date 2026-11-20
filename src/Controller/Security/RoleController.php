@@ -32,7 +32,8 @@ class RoleController extends AbstractController
         $this->roleRepository = $roleRepository;
     }
     
-    #[Route("/", name: "index_role", methods: ["GET"])]
+    #[Route("", name: "index_role", methods: ["GET"])]
+    #[Route("/", name: "index_role_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/permission",
         summary: "Liste des permissions avec pagination",

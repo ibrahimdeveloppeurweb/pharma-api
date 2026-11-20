@@ -32,7 +32,8 @@ class UserController extends AbstractController
         $this->userRepository = $userRepository;
     }
 
-    #[Route("/", name: "index_user", methods: ["GET"])]
+    #[Route("", name: "index_user", methods: ["GET"])]
+    #[Route("/", name: "index_user_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/user",
         summary: "Liste des utilisateurs avec pagination",

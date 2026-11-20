@@ -28,7 +28,8 @@ class AbonnementController extends AbstractController
         $this->abonnementRepository = $abonnementRepository;
     }
 
-    #[Route("/", name: "index_abonnement", methods: ["GET"])]
+    #[Route("", name: "index_abonnement", methods: ["GET"])]
+    #[Route("/", name: "index_abonnement_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/abonnement",
         summary: "Liste des abonnements",

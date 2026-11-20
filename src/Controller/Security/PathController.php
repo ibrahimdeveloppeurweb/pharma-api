@@ -32,7 +32,8 @@ class PathController extends AbstractController
         $this->pathRepository = $pathRepository;
     }
     
-    #[Route("/", name: "index_path", methods: ["GET"])]
+    #[Route("", name: "index_path", methods: ["GET"])]
+    #[Route("/", name: "index_path_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/path",
         summary: "Liste des routes",

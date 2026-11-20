@@ -35,7 +35,8 @@ class PatientController extends AbstractController
         $this->pharmacieRepository = $pharmacieRepository;
     }
     
-    #[Route("/", name: "index_patient", methods: ["GET"])]
+    #[Route("", name: "index_patient", methods: ["GET"])]
+    #[Route("/", name: "index_patient_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/pharmacie/patient",
         summary: "Liste des patients",

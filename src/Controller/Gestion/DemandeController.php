@@ -45,7 +45,8 @@ class DemandeController extends AbstractController
         $this->userRepository = $userRepository;
     }
     
-    #[Route("/", name: "index_demande", methods: ["GET"])]
+    #[Route("", name: "index_demande", methods: ["GET"])]
+    #[Route("/", name: "index_demande_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/pharmacie/demande",
         summary: "Liste des demandes",

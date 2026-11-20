@@ -23,7 +23,8 @@ class ReservationController extends AbstractController
         $this->reservationRepository = $reservationRepository;
     }
 
-    #[Route("/", name: "index_reservation", methods: ["GET"])]
+    #[Route("", name: "index_reservation", methods: ["GET"])]
+    #[Route("/", name: "index_reservation_slash", methods: ["GET"])]
     #[OA\Get(
         path: "/api/v1/secure/pharmacie/reservation",
         summary: "Liste des reservations pour la pharmacie",
