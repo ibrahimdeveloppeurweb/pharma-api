@@ -13,8 +13,8 @@
 #   - APP_ENV=prod et secrets générés par Coolify (SERVICE_PASSWORD_*)
 #
 #  Variables à renseigner dans Coolify (Environment Variables) :
-#   - DATABASE_URL : adresse interne de pharma-mysql
-#     + "?serverVersion=8.0.32&charset=utf8mb4"
+#   - DATABASE_URL : adresse interne de pharma-mysql (copiée telle quelle,
+#     les options serverVersion/charset sont ajoutées ici)
 #   - FIREBASE_CREDENTIALS_BASE64 : le fichier JSON du compte de service
 #     Firebase, encodé en base64 (notifications push). Vide = pas de push.
 #   - SMS_*, GOOGLE_MAPS_API_KEY : facultatives, sinon valeurs du .env
@@ -34,7 +34,7 @@ services:
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "${DATABASE_URL}?serverVersion=8.0.32&charset=utf8mb4"
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
@@ -88,7 +88,7 @@ services:
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "${DATABASE_URL}?serverVersion=8.0.32&charset=utf8mb4"
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
@@ -118,7 +118,7 @@ services:
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: "${DATABASE_URL}?serverVersion=8.0.32&charset=utf8mb4"
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
