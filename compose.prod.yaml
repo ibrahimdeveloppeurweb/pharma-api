@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────
-#  Pharma API — déploiement en ligne (Coolify), https://pharma.yacolis.io
+#  Pharma API — déploiement en ligne (Coolify), https://pharma-alert.yacolis.io
 #  Fichier à utiliser dans Coolify : Build Pack "Docker Compose",
 #  Docker Compose Location = /compose.prod.yaml
 #
 #  Différences avec compose.yaml (dev) :
 #   - aucun port publié : seul Caddy est exposé, via le proxy de
-#     Coolify (Traefik) sur https://pharma.yacolis.io (HTTPS auto)
+#     Coolify (Traefik) sur https://pharma-alert.yacolis.io (HTTPS auto)
 #   - base MySQL = ressource Coolify À PART (pharma-mysql) : son adresse
 #     interne est collée dans la variable DATABASE_URL de l'appli ;
 #     l'appli doit avoir "Connect to Predefined Network" activé
@@ -33,11 +33,11 @@ services:
       APP_ENV: ${APP_ENV:-prod}
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
-      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://mercure:80/.well-known/mercure"
-      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
       CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
@@ -87,11 +87,11 @@ services:
       APP_ENV: ${APP_ENV:-prod}
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
-      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://mercure:80/.well-known/mercure"
-      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
       CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
@@ -117,11 +117,11 @@ services:
       APP_ENV: ${APP_ENV:-prod}
       APP_DEBUG: ${APP_DEBUG:-0}
       APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
-      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
       MERCURE_URL: "http://mercure:80/.well-known/mercure"
-      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
       CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
@@ -153,7 +153,7 @@ services:
         protocol_version_compatibility 8
 
   # ─── Caddy : porte d'entrée unique ───────────────────────
-  # Coolify (Traefik) envoie https://pharma.yacolis.io vers caddy:8888.
+  # Coolify (Traefik) envoie https://pharma-alert.yacolis.io vers caddy:8888.
   #   /.well-known/mercure -> mercure
   #   tout le reste        -> pharma_api
   # ATTENTION : Coolify ne recopie ce contenu qu'à la création. Toute
