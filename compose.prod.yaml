@@ -17,7 +17,8 @@
 #     les options serverVersion/charset sont ajoutées ici)
 #   - FIREBASE_CREDENTIALS_BASE64 : le fichier JSON du compte de service
 #     Firebase, encodé en base64 (notifications push). Vide = pas de push.
-#   - SMS_*, GOOGLE_MAPS_API_KEY : facultatives, sinon valeurs du .env
+#   - GOOGLE_MAPS_API_KEY : clé Google (carte + autocomplétion des lieux)
+#   - SMS_* : facultatives, sinon valeurs du .env
 # ─────────────────────────────────────────────────────────────
 
 
@@ -42,6 +43,7 @@ services:
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
       CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
       FIREBASE_CREDENTIALS_BASE64: ${FIREBASE_CREDENTIALS_BASE64:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       TRUSTED_PROXIES: "127.0.0.1,REMOTE_ADDR"
       PHP_CLI_SERVER_WORKERS: "4"
     volumes:
