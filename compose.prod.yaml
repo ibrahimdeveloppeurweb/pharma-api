@@ -1,0 +1,211 @@
+# ─────────────────────────────────────────────────────────────
+#  Pharma API — déploiement en ligne (Coolify), https://pharma.yacolis.io
+#  Fichier à utiliser dans Coolify : Build Pack "Docker Compose",
+#  Docker Compose Location = /compose.prod.yaml
+#
+#  Différences avec compose.yaml (dev) :
+#   - aucun port publié : seul Caddy est exposé, via le proxy de
+#     Coolify (Traefik) sur https://pharma.yacolis.io (HTTPS auto)
+#   - base MySQL = ressource Coolify À PART (pharma-mysql) : son adresse
+#     interne est collée dans la variable DATABASE_URL de l'appli ;
+#     l'appli doit avoir "Connect to Predefined Network" activé
+#   - code intégré à l'image (pas de montage du dossier local)
+#   - APP_ENV=prod et secrets générés par Coolify (SERVICE_PASSWORD_*)
+#
+#  Variables à renseigner dans Coolify (Environment Variables) :
+#   - DATABASE_URL : adresse interne de pharma-mysql
+#     + "?serverVersion=8.0.32&charset=utf8mb4"
+#   - FIREBASE_CREDENTIALS_BASE64 : le fichier JSON du compte de service
+#     Firebase, encodé en base64 (notifications push). Vide = pas de push.
+#   - SMS_*, GOOGLE_MAPS_API_KEY : facultatives, sinon valeurs du .env
+# ─────────────────────────────────────────────────────────────
+
+
+services:
+
+  # ─── Application Symfony ─────────────────────────────────
+  pharma_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
+      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
+      JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
+      CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
+      FIREBASE_CREDENTIALS_BASE64: ${FIREBASE_CREDENTIALS_BASE64:-}
+      TRUSTED_PROXIES: "127.0.0.1,REMOTE_ADDR"
+      PHP_CLI_SERVER_WORKERS: "4"
+    volumes:
+      # Clés JWT et fichiers envoyés conservés entre deux déploiements
+      - jwt_keys:/var/www/app/config/jwt
+      - uploads:/var/www/app/public/uploads
+    # Au démarrage : identifiants Firebase (si fournis), clés JWT (si
+    # absentes), attente de la base, schéma, migrations, assets du site
+    # patient, cache prod, puis serveur PHP.
+    # Les migrations du projet ne savent pas partir d'une base vide (elles
+    # modifient des tables existantes) : si aucune migration n'est
+    # enregistrée, on complète le schéma depuis les entités (schema:update,
+    # AJOUTE seulement, ne supprime rien) puis on les marque comme faites.
+    command: >
+      sh -c "([ -z \"$${FIREBASE_CREDENTIALS_BASE64}\" ] ||
+              echo \"$${FIREBASE_CREDENTIALS_BASE64}\" | base64 -d > config/firebase_credentialsj.json) &&
+             php bin/console lexik:jwt:generate-keypair --skip-if-exists --no-interaction &&
+             i=0 &&
+             until php bin/console dbal:run-sql 'SELECT 1' >/dev/null 2>&1; do
+               i=$$((i+1)); [ $$i -ge 30 ] && echo 'Base injoignable apres 60 s' && exit 1;
+               echo 'Attente de la base...'; sleep 2;
+             done &&
+             (php bin/console dbal:run-sql 'SELECT version FROM doctrine_migration_versions LIMIT 1' 2>/dev/null | grep -q DoctrineMigrations ||
+              (echo 'Aucune migration enregistree : creation du schema' &&
+               php bin/console doctrine:schema:update --force --no-interaction &&
+               php bin/console doctrine:migrations:sync-metadata-storage --no-interaction &&
+               php bin/console doctrine:migrations:version --add --all --no-interaction)) &&
+             php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration &&
+             (php bin/console messenger:setup-transports --no-interaction || true) &&
+             (php bin/console importmap:install --no-interaction || true) &&
+             (php bin/console asset-map:compile --no-interaction || true) &&
+             (php bin/console cache:clear --no-interaction || true) &&
+             (php bin/console assets:install public --no-interaction || true) &&
+             php -S 0.0.0.0:8000 -t public/"
+
+  # ─── Worker Messenger (SMS / e-mails envoyés en différé) ─
+  pharma_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
+      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
+      JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
+      CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
+      FIREBASE_CREDENTIALS_BASE64: ${FIREBASE_CREDENTIALS_BASE64:-}
+    volumes:
+      - jwt_keys:/var/www/app/config/jwt
+      - uploads:/var/www/app/public/uploads
+    # Attend 60 s que l'API ait préparé la base, puis consomme la file.
+    command: >
+      sh -c "([ -z \"$${FIREBASE_CREDENTIALS_BASE64}\" ] ||
+              echo \"$${FIREBASE_CREDENTIALS_BASE64}\" | base64 -d > config/firebase_credentialsj.json) &&
+             sleep 60 && php bin/console messenger:consume async -vv --time-limit=3600"
+
+  # ─── Tâches planifiées ───────────────────────────────────
+  # Une fois par heure : app:check-abonnement désactive les pharmacies dont
+  # l'abonnement a expiré (sans danger si elle tourne plusieurs fois).
+  pharma_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_DEBUG: ${APP_DEBUG:-0}
+      APP_SECRET: ${SERVICE_PASSWORD_64_APPSECRET}
+      DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma.yacolis.io}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
+      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma.yacolis.io/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
+      JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
+      CORS_ALLOW_ORIGIN: '^https?://(localhost|127\.0\.0\.1|([a-z0-9-]+\.)?yacolis\.(io|com))(:[0-9]+)?$$'
+      FIREBASE_CREDENTIALS_BASE64: ${FIREBASE_CREDENTIALS_BASE64:-}
+    volumes:
+      - jwt_keys:/var/www/app/config/jwt
+      - uploads:/var/www/app/public/uploads
+    command: >
+      sh -c "([ -z \"$${FIREBASE_CREDENTIALS_BASE64}\" ] ||
+              echo \"$${FIREBASE_CREDENTIALS_BASE64}\" | base64 -d > config/firebase_credentialsj.json) &&
+             sleep 90 &&
+             while true; do
+               php bin/console app:check-abonnement --no-interaction || true;
+               sleep 3600;
+             done"
+
+  # ─── Mercure (alertes en temps réel vers les pharmacies) ─
+  # Alertes PRIVÉES : seul un pharmacien muni d'un jeton d'abonnement
+  # délivré par l'API peut les lire (pas de mode anonyme).
+  mercure:
+    image: dunglas/mercure:latest
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: ${SERVICE_PASSWORD_64_MERCURE}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${SERVICE_PASSWORD_64_MERCURE}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins "*"
+        protocol_version_compatibility 8
+
+  # ─── Caddy : porte d'entrée unique ───────────────────────
+  # Coolify (Traefik) envoie https://pharma.yacolis.io vers caddy:8888.
+  #   /.well-known/mercure -> mercure
+  #   tout le reste        -> pharma_api
+  # ATTENTION : Coolify ne recopie ce contenu qu'à la création. Toute
+  # modification ensuite doit être recollée dans Persistent Storage → Files.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./Caddyfile.prod
+        target: /etc/caddy/Caddyfile
+        content: |
+          {
+            servers {
+              trusted_proxies static private_ranges
+            }
+          }
+
+          :8888 {
+            # Une ligne par demande reçue (logs Coolify du service caddy).
+            # En-têtes retirés (jetons).
+            log {
+              output stdout
+              format filter {
+                wrap console
+                fields {
+                  request>headers delete
+                  request>tls delete
+                  resp_headers delete
+                  user_id delete
+                  request>uri query {
+                    delete authorization
+                  }
+                }
+              }
+            }
+            handle /.well-known/mercure/ui* {
+              respond 404
+            }
+            handle /.well-known/mercure* {
+              reverse_proxy mercure:80 {
+                flush_interval -1
+              }
+            }
+            handle {
+              reverse_proxy pharma_api:8000
+            }
+          }
+    depends_on:
+      - mercure
+      - pharma_api
+
+volumes:
+  jwt_keys:
+  uploads:
