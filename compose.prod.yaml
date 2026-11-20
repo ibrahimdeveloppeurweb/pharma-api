@@ -36,7 +36,7 @@ services:
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
-      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
@@ -90,7 +90,7 @@ services:
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
-      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
@@ -120,7 +120,7 @@ services:
       DEFAULT_URI: ${API_PUBLIC_URL:-https://pharma-alert.yacolis.io}
       DATABASE_URL: ${DATABASE_URL}
       MESSENGER_TRANSPORT_DSN: "doctrine://default?auto_setup=0"
-      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_URL: "http://pharma_mercure:80/.well-known/mercure"
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://pharma-alert.yacolis.io/.well-known/mercure}
       MERCURE_JWT_SECRET: ${SERVICE_PASSWORD_64_MERCURE}
       JWT_PASSPHRASE: ${SERVICE_PASSWORD_64_JWT}
@@ -141,7 +141,7 @@ services:
   # ─── Mercure (alertes en temps réel vers les pharmacies) ─
   # Alertes PRIVÉES : seul un pharmacien muni d'un jeton d'abonnement
   # délivré par l'API peut les lire (pas de mode anonyme).
-  mercure:
+  pharma_mercure:
     image: dunglas/mercure:latest
     restart: unless-stopped
     environment:
@@ -154,7 +154,7 @@ services:
 
   # ─── Caddy : porte d'entrée unique ───────────────────────
   # Coolify (Traefik) envoie https://pharma-alert.yacolis.io vers caddy:8888.
-  #   /.well-known/mercure -> mercure
+  #   /.well-known/mercure -> pharma_mercure
   #   tout le reste        -> pharma_api
   # ATTENTION : Coolify ne recopie ce contenu qu'à la création. Toute
   # modification ensuite doit être recollée dans Persistent Storage → Files.
@@ -194,7 +194,7 @@ services:
               respond 404
             }
             handle /.well-known/mercure* {
-              reverse_proxy mercure:80 {
+              reverse_proxy pharma_mercure:80 {
                 flush_interval -1
               }
             }
@@ -203,7 +203,7 @@ services:
             }
           }
     depends_on:
-      - mercure
+      - pharma_mercure
       - pharma_api
 
 volumes:
