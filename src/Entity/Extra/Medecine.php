@@ -37,7 +37,9 @@ class Medecine
 
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
     #[Groups(['medecine:read'])]
-    private ?int $prix = 0;
+    // Stocké comme le type DECIMAL de Doctrine (chaîne, ex. "1500.00") : un entier ici faisait échouer la lecture
+    // d'un prix avec décimales. L'API continue d'exposer un entier via getPrix().
+    private ?string $prix = '0';
 
     public function __construct()
     {
@@ -104,14 +106,13 @@ class Medecine
     }
 
     public function getPrix(): ?int
-    { 
-
-        return $this->prix ? $this->prix :0; 
+    {
+        return $this->prix !== null ? (int) round((float) $this->prix) : 0;
     }
 
-    public function setPrix(?int $prix): static
+    public function setPrix(int|float|string|null $prix): static
     {
-        $this->prix = $prix;
+        $this->prix = $prix === null ? null : (string) $prix;
 
         return $this;
     }

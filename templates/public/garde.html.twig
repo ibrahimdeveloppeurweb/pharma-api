@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaAlert - Pharmacies de Garde</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        pharma: {
+                            green: '#0f5b46',
+                            greenDark: '#0a4b39',
+                            greenLight: '#eef6f4',
+                            orange: '#f26941',
+                            cream: '#fdfbf6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #fdfbf6; }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col text-gray-800">
+
+    <!-- Top Navigation -->
+    <nav class="relative z-50 w-full py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100 bg-white">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2">
+            <img src="{{ asset('images/logo.png') }}" alt="PharmaAlert Logo" class="h-10">
+            <span class="text-xl font-serif font-bold text-pharma-green">Pharma<span class="text-pharma-orange italic">Alert</span></span>
+        </a>
+
+        <!-- Links (Desktop) -->
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+            <a href="/recherche-medicaments" class="hover:text-pharma-green transition-colors">Rechercher</a>
+            <a href="/pharmacies-garde" class="text-pharma-green font-semibold">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="hover:text-pharma-green transition-colors">Prix</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Aide</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Pour pharmacies</a>
+        </div>
+
+        <!-- CTA (Desktop) -->
+        <div class="hidden md:flex items-center gap-6">
+            <a href="#" class="bg-pharma-green text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-pharma-greenDark transition-colors shadow-sm">
+                Installer l'app
+            </a>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button onclick="toggleMobileMenu()" class="md:hidden text-gray-600 focus:outline-none p-2">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobileMenu" class="hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex-col z-50">
+            <a href="/recherche-medicaments" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Rechercher</a>
+            <a href="/pharmacies-garde" class="px-6 py-4 text-pharma-green font-semibold border-b border-gray-50">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Prix</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Aide</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Pour pharmacies</a>
+            <div class="px-6 py-4 flex flex-col gap-3 bg-gray-50">
+                <a href="#" class="bg-pharma-green text-white px-5 py-3 rounded-xl text-center font-medium">Installer l'app</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+    </script>
+
+    <!-- Header Section -->
+    <header class="bg-pharma-green text-white pt-12 pb-24 px-4 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0,0 L100,0 L100,100 L0,100 Z" fill="url(#pattern)"></path>
+                <defs>
+                    <pattern id="pattern" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <circle cx="2" cy="2" r="2" fill="currentColor"></circle>
+                    </pattern>
+                </defs>
+            </svg>
+        </div>
+
+        <div class="max-w-5xl mx-auto relative z-10 text-center">
+            <span class="inline-block py-1 px-3 rounded-full bg-white/20 text-white text-xs font-bold tracking-wider uppercase mb-4 backdrop-blur-sm">Week-end & Jours Fériés</span>
+            <h1 class="text-3xl md:text-5xl font-serif font-bold mb-4">Pharmacies de Garde</h1>
+            <p class="text-pharma-greenLight/90 text-sm md:text-base max-w-2xl mx-auto">Trouvez rapidement la liste des pharmacies ouvertes 24h/24 et 7j/7 dans votre zone pour toutes vos urgences médicales.</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8 -mt-16 relative z-20">
+
+        <!-- Filter Card -->
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 md:p-6 mb-8 flex flex-col md:flex-row gap-4 items-center">
+            <div class="flex-1 w-full relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="fas fa-map-marker-alt text-gray-400"></i>
+                </div>
+                <input type="text" id="locationInput" autocomplete="off" placeholder="Où cherchez-vous ? (Ex: Yopougon, Bouaké)" class="w-full pl-10 pr-10 py-3.5 bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl focus:ring-pharma-green focus:border-pharma-green outline-none font-medium">
+                <input type="hidden" id="locLat" value="">
+                <input type="hidden" id="locLon" value="">
+                <button id="clearLocBtn" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-red-500 transition-colors cursor-pointer">
+                    <i class="fas fa-times"></i>
+                </button>
+                <ul id="locationAutocompleteList" class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></ul>
+            </div>
+
+            <button id="searchBtn" class="w-full md:w-auto bg-pharma-orange hover:bg-orange-600 text-white font-semibold py-3.5 px-8 rounded-xl transition-colors shadow-md flex items-center justify-center shrink-0">
+                <i class="fas fa-search mr-2"></i> Afficher
+            </button>
+        </div>
+
+        <!-- Section Title & Info -->
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-2">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Résultats pour <span class="text-pharma-green">Toutes les communes</span></h2>
+                <p class="text-sm text-gray-500 mt-1">Garde du <span class="font-semibold text-gray-700">{{ dateDebut }}</span> au <span class="font-semibold text-gray-700">{{ dateFin }}</span></p>
+            </div>
+            <div class="flex items-center text-xs text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm w-max">
+                <i class="fas fa-clock text-pharma-green mr-2"></i> Mise à jour : Aujourd'hui à {{ "now"|date("H:i") }}
+            </div>
+        </div>
+
+        <!-- Grid of Pharmacies -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12" id="pharmaciesGrid">
+            {% for pharmacie in pharmacies %}
+            <!-- Pharmacy Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow relative overflow-hidden group pharmacie-card" data-lat="{{ pharmacie.latitude }}" data-lon="{{ pharmacie.longitude }}">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-pharma-green/10 rounded-bl-full flex items-start justify-end p-3 -mr-2 -mt-2">
+                    <i class="fas fa-cross text-pharma-green text-xl opacity-50"></i>
+                </div>
+
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-pharma-green rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
+                        <i class="fas fa-plus text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-800 text-base leading-tight pharmacie-nom">{{ pharmacie.nom }}</h3>
+                        <p class="text-xs text-pharma-green font-semibold mt-0.5 flex justify-between items-center">
+                            <span><i class="fas fa-shield-alt mr-1"></i> De Garde</span>
+                            <span class="distance-badge hidden bg-pharma-greenLight text-pharma-green px-2 py-0.5 rounded-full text-[10px]"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="space-y-2 mb-5">
+                      <div class="flex items-start gap-2 text-sm text-gray-600">
+                          <i class="fas fa-map-marker-alt text-gray-400 mt-1 shrink-0"></i>
+                        <p class="pharmacie-location">{{ pharmacie.lieuExact|default(pharmacie.adresse|default(pharmacie.ville|default('Adresse non précisée'))) }}</p>
+                      </div>
+
+                </div>
+
+                <div class="flex gap-2">
+                    {% if pharmacie.latitude and pharmacie.longitude %}
+                    <a href="https://www.google.com/maps/dir/?api=1&destination={{ pharmacie.latitude }},{{ pharmacie.longitude }}" data-dest="{{ pharmacie.latitude }},{{ pharmacie.longitude }}" target="_blank" rel="noopener noreferrer" class="js-directions flex-1 bg-pharma-greenLight text-pharma-green font-semibold py-2.5 rounded-xl hover:bg-pharma-green hover:text-white transition-colors text-sm flex items-center justify-center">
+                        <i class="fas fa-directions mr-2"></i> Itinéraire
+                    </a>
+                    {% else %}
+                    <a href="https://www.google.com/maps/search/?api=1&query={{ pharmacie.nom|url_encode }} {{ pharmacie.adresse|default(pharmacie.ville)|url_encode }}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-pharma-greenLight text-pharma-green font-semibold py-2.5 rounded-xl hover:bg-pharma-green hover:text-white transition-colors text-sm flex items-center justify-center">
+                        <i class="fas fa-directions mr-2"></i> Itinéraire
+                    </a>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center" id="noResults">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-info-circle text-gray-400 text-2xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 text-lg mb-2">Aucune pharmacie de garde</h3>
+                <p class="text-gray-500">Il n'y a actuellement aucune pharmacie de garde enregistrée.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+    </main>
+    <script src="/sousQuartiers.js"></script>
+
+    <script>
+
+        // Location Autocomplete Logic
+        const locationInput = document.getElementById('locationInput');
+        const locAutocompleteList = document.getElementById('locationAutocompleteList');
+        const locLatInput = document.getElementById('locLat');
+        const locLonInput = document.getElementById('locLon');
+        const clearLocBtn = document.getElementById('clearLocBtn');
+
+        let allLocations = [];
+        if (typeof sousQuartiers !== 'undefined') {
+            for (const commune in sousQuartiers) {
+                sousQuartiers[commune].forEach(quartier => {
+                    allLocations.push({
+                        label: `${quartier.nom}, ${commune}, Abidjan, Côte d'Ivoire`,
+                        lat: quartier.lat,
+                        lon: quartier.lon
+                    });
+                });
+            }
+        }
+
+        async function searchWithAWS(query) {
+            // Autocomplete Google Places (via le backend)
+            try {
+                const res = await fetch(`/api/v1/public/places/autocomplete?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.map(r => ({ label: r.label, placeId: r.placeId, source: 'google' }));
+                }
+            } catch (e) {
+                console.error("Google Places Error:", e);
+            }
+            return [];
+        }
+
+        let debounceTimer;
+        locationInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const val = this.value.trim();
+            locAutocompleteList.innerHTML = '';
+
+            if (val.length < 2) {
+                locAutocompleteList.classList.add('hidden');
+                clearLocBtn.classList.add('hidden');
+                return;
+            }
+
+            clearLocBtn.classList.remove('hidden');
+
+            debounceTimer = setTimeout(async () => {
+                const queryLower = val.toLowerCase();
+
+                // 1. Recherche Locale
+                let results = allLocations.filter(loc => loc.label.toLowerCase().includes(queryLower));
+
+                // 2. Recherche AWS
+                locAutocompleteList.innerHTML = '<li class="px-4 py-3 text-sm text-gray-500 text-center"><i class="fas fa-spinner fa-spin mr-2"></i> Recherche en cours...</li>';
+                locAutocompleteList.classList.remove('hidden');
+
+                const awsResults = await searchWithAWS(val);
+                results = [...results, ...awsResults];
+
+                // 3. Déduplication
+                const uniqueResults = [];
+                results.forEach(res => {
+                    const isDuplicate = uniqueResults.some(existing =>
+                        existing.label === res.label || (Math.abs(existing.lat - res.lat) < 0.001 && Math.abs(existing.lon - res.lon) < 0.001)
+                    );
+                    if (!isDuplicate) {
+                        uniqueResults.push(res);
+                    }
+                });
+
+                // Limiter à 8 résultats max
+                const finalMatches = uniqueResults.slice(0, 8);
+
+                locAutocompleteList.innerHTML = '';
+                if (finalMatches.length > 0) {
+                    finalMatches.forEach(match => {
+                        const li = document.createElement('li');
+                        li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 border-b border-gray-100 last:border-0 flex items-center';
+                        li.innerHTML = `<i class="fas fa-map-marker-alt text-gray-300 mr-3"></i> <span class="truncate">${match.label}</span>`;
+                        li.onclick = () => selectLocation(match);
+                        locAutocompleteList.appendChild(li);
+                    });
+                } else {
+                    locAutocompleteList.innerHTML = '<li class="px-4 py-3 text-sm text-gray-500 text-center">Aucun résultat trouvé</li>';
+                }
+            }, 500);
+        });
+
+        // « Y aller » : l'itinéraire part du lieu renseigné par le visiteur (sinon Google prend la position de l'appareil)
+        function refreshDirectionLinks() {
+            const lat = parseFloat(locLatInput.value), lon = parseFloat(locLonInput.value);
+            const hasOrigin = Number.isFinite(lat) && Number.isFinite(lon);
+            document.querySelectorAll('a.js-directions').forEach(a => {
+                let url = 'https://www.google.com/maps/dir/?api=1&destination=' + a.dataset.dest;
+                if (hasOrigin) url += '&origin=' + lat + ',' + lon;
+                a.href = url;
+            });
+        }
+
+        async function selectLocation(loc) {
+            locationInput.value = loc.label;
+            if (loc.placeId && (loc.lat === undefined || loc.lat === null)) {
+                try {
+                    const r = await fetch(`/api/v1/public/places/details?place_id=${encodeURIComponent(loc.placeId)}`);
+                    if (r.ok) { const d = await r.json(); loc.lat = d.lat; loc.lon = d.lon; }
+                } catch (e) { console.error('Google Places details error:', e); }
+            }
+            locLatInput.value = loc.lat ?? '';
+            locLonInput.value = loc.lon ?? '';
+            refreshDirectionLinks();
+            locAutocompleteList.classList.add('hidden');
+            clearLocBtn.classList.remove('hidden');
+
+            // Mise à jour visuelle factice pour l'interface
+            document.querySelector('.text-xl.font-bold.text-gray-800').innerHTML = `Résultats pour <span class="text-pharma-green">${loc.label.split(',')[0]}</span>`;
+        }
+
+        clearLocBtn.addEventListener('click', function() {
+            locationInput.value = '';
+            locLatInput.value = '';
+            locLonInput.value = '';
+            refreshDirectionLinks();
+            clearLocBtn.classList.add('hidden');
+            locAutocompleteList.classList.add('hidden');
+            document.querySelector('.text-xl.font-bold.text-gray-800').innerHTML = `Résultats pour <span class="text-pharma-green">Toutes les communes</span>`;
+        });
+
+        // Clic à l'extérieur pour fermer l'autocomplete
+        document.addEventListener('click', function(e) {
+            if (e.target !== locationInput && e.target !== locAutocompleteList) {
+                locAutocompleteList.classList.add('hidden');
+            }
+        });
+
+        // Calcul de distance (Formule de Haversine)
+        function getDistance(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity; // Si coordonnées manquantes, on met très loin
+
+            const R = 6371; // Rayon de la Terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a =
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const d = R * c;
+            return d;
+        }
+
+        // Bouton de recherche
+        const searchBtn = document.getElementById('searchBtn');
+        const searchRadiusKm = 3; // Périmètre réduit à 3 km pour être plus précis
+
+        searchBtn.addEventListener('click', function() {
+            // Effet visuel sur le bouton
+            const originalText = searchBtn.innerHTML;
+            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Recherche...';
+            searchBtn.disabled = true;
+
+            setTimeout(() => {
+                const userLat = parseFloat(locLatInput.value);
+                const userLon = parseFloat(locLonInput.value);
+                const cards = document.querySelectorAll('.pharmacie-card');
+                let visibleCount = 0;
+
+                if (isNaN(userLat) || isNaN(userLon)) {
+                    // Si aucune localisation n'est sélectionnée, tout afficher
+                    cards.forEach(card => {
+                        card.style.display = 'block';
+                        const badge = card.querySelector('.distance-badge');
+                        if (badge) badge.classList.add('hidden');
+                        visibleCount++;
+                    });
+                    document.querySelector('.text-xl.font-bold.text-gray-800').innerHTML = `Résultats pour <span class="text-pharma-green">Toutes les communes</span>`;
+                } else {
+                    // Filtrer par distance
+                    cards.forEach(card => {
+                        const pLat = parseFloat(card.dataset.lat);
+                        const pLon = parseFloat(card.dataset.lon);
+
+                        const distance = getDistance(userLat, userLon, pLat, pLon);
+                        const badge = card.querySelector('.distance-badge');
+
+                        if (distance <= searchRadiusKm) {
+                            card.style.display = 'block';
+                            if (badge) {
+                                badge.innerHTML = `<i class="fas fa-route mr-1"></i> ${distance.toFixed(1)} km`;
+                                badge.classList.remove('hidden');
+                            }
+                            visibleCount++;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    // Mettre à jour le titre
+                    const locName = locationInput.value.split(',')[0] || "la zone sélectionnée";
+                    document.querySelector('.text-xl.font-bold.text-gray-800').innerHTML = `Résultats pour <span class="text-pharma-green">${locName}</span>`;
+                }
+
+                // Gérer le message "Aucun résultat"
+                let noResultsDiv = document.getElementById('noResultsDynamic');
+                if (visibleCount === 0) {
+                    if (!noResultsDiv) {
+                        noResultsDiv = document.createElement('div');
+                        noResultsDiv.id = 'noResultsDynamic';
+                        noResultsDiv.className = 'col-span-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center';
+                        noResultsDiv.innerHTML = `
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-search-minus text-gray-400 text-2xl"></i>
+                            </div>
+                            <h3 class="font-bold text-gray-800 text-lg mb-2">Aucune pharmacie à proximité</h3>
+                            <p class="text-gray-500">Aucune pharmacie de garde trouvée dans un rayon de ${searchRadiusKm} km.</p>
+                        `;
+                        document.getElementById('pharmaciesGrid').appendChild(noResultsDiv);
+                    } else {
+                        noResultsDiv.style.display = 'block';
+                    }
+
+                    const noResultsPhp = document.getElementById('noResults');
+                    if (noResultsPhp) noResultsPhp.style.display = 'none';
+                } else {
+                    if (noResultsDiv) noResultsDiv.style.display = 'none';
+                }
+
+                // Restaurer le bouton
+                searchBtn.innerHTML = originalText;
+                searchBtn.disabled = false;
+            }, 300); // Petit délai pour montrer que ça a travaillé
+        });
+
+    </script>
+</body>
+</html>

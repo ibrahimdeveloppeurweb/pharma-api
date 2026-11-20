@@ -46,6 +46,7 @@ class DashboardManager
         $en_attente = 0;
         $notifie = 0;
         $recupere = 0;
+        $annule = 0;
 
         $prcR = 0;
         $prcN = 0;
@@ -96,12 +97,16 @@ class DashboardManager
                    }  
              
             }
+            if ($item->getStatut() === Demande::STATUT_ANNULE) {
+                $annule += 1;
+            }
         }
          
         $datas['widget']['somR'] = $somR ;
         $datas['widget']['en_attente'] = $en_attente;
         $datas['widget']['notifie'] = $notifie;
         $datas['widget']['recupere'] = $recupere;
+        $datas['widget']['annule'] = $annule;
 
         // 4️⃣ Génération des données du graphique selon la période
         switch ($data->period) {

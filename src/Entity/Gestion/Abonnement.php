@@ -22,15 +22,15 @@ class Abonnement
     private ?int $id = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['abonnement:read', 'abonnement:write', 'user:read'])]
+    #[Groups(['abonnement:read', 'abonnement:write', 'user:read', 'pharmacie:read'])]
     private ?\DateTime $dateDebut = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['abonnement:read', 'abonnement:write', 'user:read'])]
+    #[Groups(['abonnement:read', 'abonnement:write', 'user:read', 'pharmacie:read'])]
     private ?\DateTime $dateFin = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['abonnement:read', 'abonnement:write', 'user:read'])]
+    #[Groups(['abonnement:read', 'abonnement:write', 'user:read', 'pharmacie:read'])]
     private ?bool $actif = null;
 
     #[ORM\Column(nullable: true)]

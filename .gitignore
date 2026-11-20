@@ -22,3 +22,17 @@
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
+
+###> Pharma : secrets et fichiers générés ###
+# Clés privées Firebase (compte de service) : ne JAMAIS les versionner
+/config/firebase_credentials*.json
+# Anciens journaux de debug (remplacés par les logs Symfony)
+/src/Controller/**/*.txt
+###< Pharma ###
+
+# Archives et scripts de test locaux (ne pas publier)
+*.zip
+/models.txt
+/get_models*.php
+/test_*.php
+/dbg_tmp.php

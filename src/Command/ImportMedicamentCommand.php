@@ -34,6 +34,7 @@ class ImportMedicamentCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        ini_set('memory_limit', '-1'); // Lever la limite de mémoire pour l'importation
         $io = new SymfonyStyle($input, $output);
         $filePath = $input->getArgument('file');
 
@@ -48,6 +49,9 @@ class ImportMedicamentCommand extends Command
 
         $io->info('Importation des médicaments en cours...');
         $count = 0;
+
+        // Désactiver le logging SQL pour économiser de la mémoire
+        $this->em->getConnection()->getConfiguration()->setSQLLogger(null);
 
         foreach ($rows as $index => $row) {
             if ($index === 0) continue; // Ignorer l'en-tête "PSLIB"
@@ -65,7 +69,7 @@ class ImportMedicamentCommand extends Command
                 ->findOneBy(['nom' => $nomMedicament]);
             
             if ($existant) {
-                $io->note("Médicament '$nomMedicament' déjà existant, ignoré.");
+                // $io->note("Médicament '$nomMedicament' déjà existant, ignoré.");
                 continue;
             }
 
@@ -78,9 +82,10 @@ class ImportMedicamentCommand extends Command
             $this->em->persist($medecine);
             $count++;
 
-            // Flush tous les 50 enregistrements pour optimiser
-            if ($count % 50 === 0) {
+            // Flush et Clear tous les 100 enregistrements pour optimiser la mémoire
+            if ($count % 100 === 0) {
                 $this->em->flush();
+                $this->em->clear(); // Indispensable pour libérer la mémoire
                 $io->note("$count médicaments traités...");
             }
         }

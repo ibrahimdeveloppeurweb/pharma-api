@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaAlert - Trouvez votre médicament</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        pharma: {
+                            green: '#0f5b46',
+                            greenDark: '#0a4b39',
+                            greenLight: '#eef6f4',
+                            orange: '#f26941',
+                            cream: '#fdfbf6',
+                            brown: '#231511',
+                            brownLight: '#2c1e19'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fdfbf6;
+        }
+        .gradient-blur {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(15, 91, 70, 0.1) 0%, rgba(253, 251, 246, 0) 70%);
+            top: -100px;
+            right: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800 antialiased overflow-x-hidden">
+
+    <!-- Top Navigation -->
+    <nav class="relative z-50 w-full py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100 bg-pharma-cream">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2">
+            <img src="{{ asset('images/logo.png') }}" alt="PharmaAlert Logo" class="h-10">
+            <span class="text-xl font-serif font-bold text-pharma-green">Pharma<span class="text-pharma-orange italic">Alert</span></span>
+        </a>
+
+        <!-- Links (Desktop) -->
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+            <a href="/recherche-medicaments" class="text-pharma-green font-semibold">Rechercher</a>
+            <a href="/pharmacies-garde" class="hover:text-pharma-green transition-colors">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="hover:text-pharma-green transition-colors">Prix</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Aide</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Pour pharmacies</a>
+        </div>
+
+        <!-- CTA (Desktop) -->
+        <div class="hidden md:flex items-center gap-6">
+            <a href="#" class="bg-pharma-green text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-pharma-greenDark transition-colors shadow-sm">
+                Installer l'app
+            </a>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button onclick="toggleMobileMenu()" class="md:hidden text-gray-600 focus:outline-none p-2">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobileMenu" class="hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex-col z-50">
+            <a href="/recherche-medicaments" class="px-6 py-4 text-pharma-green font-semibold border-b border-gray-50">Rechercher</a>
+            <a href="/pharmacies-garde" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Prix</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Aide</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Pour pharmacies</a>
+            <div class="px-6 py-4 flex flex-col gap-3 bg-gray-50">
+                <a href="#" class="bg-pharma-green text-white px-5 py-3 rounded-xl text-center font-medium">Installer l'app</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+    </script>
+
+    <!-- Hero Section -->
+    <section class="relative z-20 pt-20 pb-16 px-6 overflow-x-clip flex flex-col items-center text-center">
+        <div class="gradient-blur"></div>
+        
+        <div class="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
+            
+            <!-- Connection Badge -->
+            <div class="inline-flex items-center gap-2 bg-pharma-green/5 border border-pharma-green/20 px-4 py-1.5 rounded-full mb-8">
+                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span class="text-xs font-semibold text-pharma-green tracking-wide">1 400+ pharmacies connectées en Côte d'Ivoire</span>
+            </div>
+
+            <!-- Main Heading -->
+            <h1 class="text-5xl md:text-7xl font-serif font-bold text-pharma-green leading-tight mb-6 tracking-tight">
+                Quel <span class="text-pharma-orange italic font-serif">médicament</span><br>cherchez-vous ?
+            </h1>
+
+            <!-- Subtitle -->
+            <p class="text-gray-500 text-lg md:text-xl max-w-2xl mb-12 font-medium leading-relaxed">
+                Trouvez en quelques secondes une pharmacie qui a votre médicament disponible. Gratuit, sans inscription, conçu en Côte d'Ivoire.
+            </p>
+
+            <!-- Search Box -->
+            <div class="bg-white p-2 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] flex flex-col md:flex-row items-center w-full max-w-4xl border border-gray-100 relative gap-2">
+                
+                <!-- Medicament Input -->
+                <div class="flex-1 flex items-center px-4 md:px-6 py-3 w-full border-b md:border-b-0 md:border-r border-gray-100">
+                    <i class="fas fa-search text-pharma-green text-xl mr-4 opacity-70"></i>
+                    <div class="flex flex-col text-left w-full relative">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Médicament</label>
+                        <div class="flex items-center w-full">
+                            <input type="text" id="indexMedicamentInput" autocomplete="off" placeholder="Ex: Doliprane 1000mg" class="w-full bg-transparent border-none outline-none text-gray-800 font-semibold text-base placeholder-gray-400 focus:ring-0 p-0">
+                            <button onclick="addIndexMedicament()" class="ml-2 bg-pharma-greenLight text-pharma-green px-3 py-1.5 rounded-lg hover:bg-pharma-green hover:text-white transition-colors">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Dropdown autocompletion -->
+                        <ul id="indexAutocompleteList" class="absolute top-full left-0 mt-2 z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl hidden max-h-48 overflow-y-auto"></ul>
+                    </div>
+                </div>
+
+                <!-- Localisation Input -->
+                <div class="flex-1 flex items-center px-4 md:px-6 py-3 w-full border-b md:border-b-0 border-gray-100">
+                    <i class="fas fa-map-marker-alt text-pharma-orange text-xl mr-4 opacity-70"></i>
+                    <div class="flex flex-col text-left w-full relative">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Localisation (Optionnelle)</label>
+                        <div class="flex items-center w-full">
+                            <input type="text" id="indexLocationInput" autocomplete="off" placeholder="Position actuelle (GPS)" class="w-full bg-transparent border-none outline-none text-gray-800 font-semibold text-base placeholder-gray-400 focus:ring-0 p-0">
+                            <input type="hidden" id="indexLocLat" value="">
+                            <input type="hidden" id="indexLocLon" value="">
+                            <button onclick="clearIndexLocation()" id="indexClearLocBtn" class="hidden ml-2 text-gray-400 px-2 py-1.5 hover:text-red-500 transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <ul id="indexLocationAutocompleteList" class="absolute top-full left-0 mt-2 z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl hidden max-h-48 overflow-y-auto"></ul>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button onclick="passerALaRecherche()" class="w-full md:w-auto bg-pharma-green hover:bg-pharma-greenDark text-white font-semibold py-4 px-10 rounded-xl transition-colors mt-2 md:mt-0 flex items-center justify-center whitespace-nowrap">
+                    Rechercher
+                </button>
+            </div>
+
+            <!-- List of added medicaments -->
+            <ul id="indexMedicamentList" class="mt-6 flex flex-wrap gap-2 w-full max-w-2xl justify-center"></ul>
+
+            {# Scanner une ordonnance (désactivé temporairement)
+            <div class="w-full max-w-2xl mt-6">
+                <div class="relative flex items-center py-2 mb-4">
+                    <div class="flex-grow border-t border-gray-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">OU</span>
+                    <div class="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <button type="button" onclick="document.getElementById('ordonnanceInput').click()" class="w-full bg-white/80 backdrop-blur-sm border-2 border-dashed border-pharma-green/50 text-pharma-green hover:bg-white hover:border-pharma-green font-semibold py-4 rounded-2xl transition-all flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md">
+                    <i class="fas fa-camera text-2xl group-hover:scale-110 transition-transform"></i>
+                    <span>Scanner une ordonnance</span>
+                    <span class="text-xs font-normal text-gray-500">L'IA va extraire les médicaments automatiquement</span>
+                </button>
+                <input type="file" id="ordonnanceInput" accept="image/*" class="hidden" onchange="handleOrdonnanceUpload(event)">
+            </div>
+            #}
+
+        </div>
+    </section>
+
+    <!-- Features Bar -->
+    <div class="border-y border-gray-200/60 bg-pharma-cream py-5">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-center gap-8 md:gap-16 text-sm font-medium text-pharma-green/80">
+            <div class="flex items-center justify-center gap-2">
+                <i class="fas fa-lock"></i>
+                <span>Sans inscription requise</span>
+            </div>
+            <div class="flex items-center justify-center gap-2">
+                <i class="far fa-clock"></i>
+                <span>Mise à jour temps réel</span>
+            </div>
+            <div class="flex items-center justify-center gap-2">
+                <i class="far fa-bell"></i>
+                <span>Alerte quand dispo</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Section -->
+    <section class="bg-pharma-brown text-white py-24 px-6 relative overflow-hidden">
+        <!-- Background Glow -->
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-pharma-orange/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center relative z-10">
+            
+            <!-- Left Content -->
+            <div>
+                <!-- Alert Badge -->
+                <div class="inline-flex items-center gap-2 bg-red-950/40 border border-red-900/50 px-3 py-1.5 rounded-full mb-8">
+                    <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                    <span class="text-[11px] font-bold text-red-400 tracking-widest uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Alerte santé publique</span>
+                </div>
+
+                <h2 class="text-4xl md:text-5xl font-serif font-bold leading-tight mb-6">
+                    Les médicaments de la <span class="text-pharma-orange italic font-serif">rue</span> tuent. Chaque jour.
+                </h2>
+
+                <p class="text-gray-300 text-base leading-relaxed mb-6">
+                    En Afrique, plus de <strong class="text-white">100 000 personnes meurent chaque année</strong> à cause de faux médicaments achetés sur les marchés informels. En Côte d'Ivoire, 1 médicament sur 3 vendu hors officine est contrefait, périmé ou mal conservé.
+                </p>
+
+                <p class="text-gray-300 text-base leading-relaxed mb-10">
+                    Avec PharmaAlert, vous trouvez votre médicament <strong class="text-white">dans une officine agréée</strong> — toujours. Pas sur un trottoir. Pas dans un sac plastique. Pas sans pharmacien.
+                </p>
+
+                <a href="/recherche-medicaments" class="inline-flex items-center justify-center gap-2 bg-pharma-orange hover:bg-orange-600 text-white font-semibold py-4 px-8 rounded-xl transition-all shadow-lg shadow-pharma-orange/20">
+                    <i class="far fa-check-circle"></i>
+                    Chercher dans une pharmacie agréée
+                </a>
+            </div>
+
+            <!-- Right Content (Stats Card) -->
+            <div class="bg-[#2c1e19] border border-white/5 rounded-3xl p-8 md:p-10 shadow-2xl relative">
+                <!-- Decorative elements -->
+                <div class="absolute -top-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+
+                <div class="space-y-8 relative z-10">
+                    <!-- Stat 1 -->
+                    <div class="flex items-start gap-5 pb-8 border-b border-white/5">
+                        <div class="w-12 h-12 rounded-xl bg-orange-950/50 border border-orange-900/30 flex items-center justify-center shrink-0">
+                            <i class="fas fa-exclamation-triangle text-pharma-orange text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-serif font-bold text-pharma-orange mb-1 italic">100 000</div>
+                            <div class="text-sm text-gray-400">décès / an en Afrique liés aux faux médicaments (OMS)</div>
+                        </div>
+                    </div>
+
+                    <!-- Stat 2 -->
+                    <div class="flex items-start gap-5 pb-8 border-b border-white/5">
+                        <div class="w-12 h-12 rounded-xl bg-orange-950/50 border border-orange-900/30 flex items-center justify-center shrink-0">
+                            <i class="far fa-clock text-pharma-orange text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-serif font-bold text-pharma-orange mb-1 italic">1 sur 3</div>
+                            <div class="text-sm text-gray-400">médicaments de la rue est contrefait ou périmé en Côte d'Ivoire</div>
+                        </div>
+                    </div>
+
+                    <!-- Stat 3 -->
+                    <div class="flex items-start gap-5">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-950/30 border border-emerald-900/30 flex items-center justify-center shrink-0">
+                            <i class="fas fa-check text-emerald-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-serif font-bold text-emerald-400 mb-1 italic">1400+</div>
+                            <div class="text-sm text-gray-400 leading-relaxed">officines agréées en Côte d'Ivoire — toutes accessibles sur PharmaAlert</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footnote -->
+                <div class="mt-8 pt-6 border-t border-white/5 text-center">
+                    <p class="text-[10px] text-gray-500 italic uppercase tracking-wider">
+                        Sources : Organisation Mondiale de la Santé (OMS) • AIRP • Ordre National des Pharmaciens de Côte d'Ivoire
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-50 border-t border-gray-100 py-8 text-center text-sm text-gray-500">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <img src="{{ asset('images/logo.png') }}" alt="PharmaAlert Logo" class="h-6 opacity-70 grayscale">
+                <span class="font-bold text-gray-400">&copy; {{ 'now'|date('Y') }} PharmaAlert. Tous droits réservés.</span>
+            </div>
+            <div class="flex gap-6 font-medium text-gray-400">
+                <a href="#" class="hover:text-pharma-green transition-colors">Mentions légales</a>
+                <a href="#" class="hover:text-pharma-green transition-colors">Politique de confidentialité</a>
+                <a href="#" class="hover:text-pharma-green transition-colors">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Popup -->
+    <div id="cookieConsentModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="cookieConsentContent">
+            <!-- Header -->
+            <div class="px-8 pt-8 pb-6 text-center border-b border-gray-100">
+                <div class="w-16 h-16 bg-pharma-greenLight rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-shield-halved text-3xl text-pharma-green"></i>
+                </div>
+                <h3 class="text-xl md:text-2xl font-bold text-gray-900 mb-2">Nous respectons la vie privée de nos utilisateurs.</h3>
+                <h4 class="text-lg font-bold text-pharma-green">Vos données, vos choix.</h4>
+            </div>
+            
+            <!-- Body -->
+            <div class="px-8 py-6 text-sm text-gray-600 space-y-4 max-h-[40vh] overflow-y-auto">
+                <p>
+                    <strong class="text-gray-900">PharmaAlert</strong> utilise des cookies et des technologies analogues pour assurer le bon fonctionnement et la sécurité de notre site et application, mesurer et analyser l'audience et la performance des campagnes de sensibilisation, et personnaliser les contenus.
+                </p>
+                <p>
+                    Vous pouvez configurer vos préférences ci-dessous en cliquant sur "En savoir plus" et accepter ou refuser les cookies non essentiels à tout moment.
+                </p>
+                <p>
+                    Pour en savoir plus sur les cookies, les données utilisées et leur traitement, vous pouvez consulter notre <a href="#" class="text-pharma-green hover:underline">Politique en matière de cookies</a> et notre <a href="#" class="text-pharma-green hover:underline">Politique de protection des données à caractère personnel</a>.
+                </p>
+            </div>
+
+            <!-- Footer / Actions -->
+            <div class="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
+                <button onclick="handleCookieConsent('details')" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-pharma-green hover:bg-pharma-greenLight rounded-lg transition-colors">
+                    EN SAVOIR PLUS
+                </button>
+                <button onclick="handleCookieConsent('refuser')" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors shadow-sm">
+                    REFUSER
+                </button>
+                <button onclick="handleCookieConsent('accepter')" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-white bg-pharma-green hover:bg-pharma-greenDark rounded-lg transition-colors shadow-sm">
+                    ACCEPTER
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── INDEX MEDICAMENTS LOGIC ────────────────────────────────────────
+        let indexMedicaments = [];
+
+        function addIndexMedicament(nameToAdd = null) {
+            const input = document.getElementById('indexMedicamentInput');
+            const val = nameToAdd !== null ? nameToAdd.trim() : input.value.trim();
+            if (val && !indexMedicaments.includes(val)) {
+                indexMedicaments.push(val);
+                if (nameToAdd === null) input.value = '';
+                renderIndexList();
+            }
+        }
+
+        async function handleOrdonnanceUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Show loading state
+            const uploadBtn = event.target.previousElementSibling;
+            const originalHtml = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl"></i><span>Analyse en cours...</span><span class="text-xs font-normal text-gray-500">Cela peut prendre quelques secondes</span>';
+            uploadBtn.disabled = true;
+            uploadBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/api/v1/public/prescription/extract?mode=exact', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    let totalAdded = 0;
+                    if (result.found && result.found.length > 0) {
+                        result.found.forEach(med => {
+                            addIndexMedicament(med.libelle);
+                            totalAdded++;
+                        });
+                    }
+                    if (result.not_found && result.not_found.length > 0) {
+                        result.not_found.forEach(medName => {
+                            addIndexMedicament(medName);
+                            totalAdded++;
+                        });
+                    }
+
+                    if (totalAdded > 0) {
+                        alert(`${totalAdded} médicament(s) extrait(s) de l'ordonnance avec succès !`);
+                    } else {
+                        alert("L'ordonnance a été analysée, mais aucun médicament n'a pu être extrait de l'image.");
+                    }
+                } else {
+                    alert('Erreur lors de l\'analyse: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Une erreur est survenue lors de l\'envoi de l\'image.');
+            } finally {
+                // Restore button
+                uploadBtn.innerHTML = originalHtml;
+                uploadBtn.disabled = false;
+                uploadBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                event.target.value = ''; // Reset input
+            }
+        }
+
+        function removeIndexMedicament(index) {
+            indexMedicaments.splice(index, 1);
+            renderIndexList();
+        }
+
+        function renderIndexList() {
+            const list = document.getElementById('indexMedicamentList');
+            list.innerHTML = '';
+            indexMedicaments.forEach((med, idx) => {
+                const li = document.createElement('li');
+                li.className = "bg-white border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-full flex items-center shadow-sm";
+                li.innerHTML = `
+                    <i class="fas fa-pills text-pharma-green mr-2"></i> ${med}
+                    <button onclick="removeIndexMedicament(${idx})" class="ml-3 text-gray-400 hover:text-red-500 focus:outline-none transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        document.getElementById('indexMedicamentInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') addIndexMedicament();
+        });
+
+        // ─── AUTOCOMPLETION LOGIC ────────────────────────────────────────
+        const indexInputField = document.getElementById('indexMedicamentInput');
+        const indexAutocompleteList = document.getElementById('indexAutocompleteList');
+        let indexAutocompleteTimeout = null;
+
+        indexInputField.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val.length < 2) {
+                indexAutocompleteList.innerHTML = '';
+                indexAutocompleteList.classList.add('hidden');
+                return;
+            }
+
+            if (indexAutocompleteTimeout) clearTimeout(indexAutocompleteTimeout);
+            
+            indexAutocompleteTimeout = setTimeout(async () => {
+                if (indexInputField.value.trim() !== val) return;
+
+                try {
+                    const res = await fetch(`/api/v1/public/recherche-medicament/autocomplete?q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    
+                    if (indexInputField.value.trim() !== val) return;
+
+                    if (res.ok && data.data && data.data.length > 0) {
+                        indexAutocompleteList.innerHTML = '';
+                        data.data.forEach(name => {
+                            const li = document.createElement('li');
+                            li.className = 'px-4 py-3 hover:bg-pharma-greenLight hover:text-pharma-green cursor-pointer text-sm font-medium border-b border-gray-50 last:border-0 flex items-center text-left';
+                            li.innerHTML = `<i class="fas fa-pills opacity-50 mr-3 text-pharma-green"></i> ${name}`;
+                            li.addEventListener('click', () => {
+                                indexInputField.value = name;
+                                indexAutocompleteList.innerHTML = '';
+                                indexAutocompleteList.classList.add('hidden');
+                                indexInputField.focus();
+                                addIndexMedicament(); // Auto-ajouter après le clic (optionnel mais pratique)
+                            });
+                            indexAutocompleteList.appendChild(li);
+                        });
+                        indexAutocompleteList.classList.remove('hidden');
+                    } else {
+                        indexAutocompleteList.innerHTML = '';
+                        indexAutocompleteList.classList.add('hidden');
+                    }
+                } catch (e) {
+                    console.error('Erreur autocompletion:', e);
+                }
+            }, 50); 
+        });
+
+        // ─── LOCALISATION (AUTOCOMPLETE) ─────────────────────────────────
+        const indexLocInput = document.getElementById('indexLocationInput');
+        const indexLocLat = document.getElementById('indexLocLat');
+        const indexLocLon = document.getElementById('indexLocLon');
+        const indexClearLocBtn = document.getElementById('indexClearLocBtn');
+        const indexLocList = document.getElementById('indexLocationAutocompleteList');
+        let indexLocTimeout = null;
+        // Résolution (réseau) des coordonnées d'un lieu choisi : « Rechercher » l'attend avant de partir
+        let indexLocPending = null;
+
+        indexLocInput.addEventListener('input', function(e) {
+            const val = e.target.value.trim();
+            indexLocLat.value = '';
+            indexLocLon.value = '';
+            
+            if (val.length === 0) {
+                indexClearLocBtn.classList.add('hidden');
+                indexLocList.classList.add('hidden');
+                return;
+            }
+
+            indexClearLocBtn.classList.remove('hidden');
+
+            if (indexLocTimeout) clearTimeout(indexLocTimeout);
+            indexLocTimeout = setTimeout(async () => {
+                if (indexLocInput.value.trim() !== val) return;
+                try {
+                    const res = await fetch(`/api/v1/public/places/autocomplete?q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    
+                    if (indexLocInput.value.trim() !== val) return;
+
+                    if (data && data.length > 0) {
+                        indexLocList.innerHTML = '';
+                        data.forEach(place => {
+                            const li = document.createElement('li');
+                            li.className = 'px-4 py-3 hover:bg-pharma-orange/10 hover:text-pharma-orange cursor-pointer text-sm font-medium border-b border-gray-50 last:border-0 flex items-start text-left';
+                            li.innerHTML = `<i class="fas fa-map-marker-alt opacity-50 mr-3 text-pharma-orange mt-1"></i> <span>${place.label}</span>`;
+                            li.addEventListener('click', () => {
+                                indexLocInput.value = place.label;
+                                // Jamais de coordonnées d'un ancien lieu pendant que le nouveau se résout
+                                indexLocLat.value = '';
+                                indexLocLon.value = '';
+                                indexLocList.innerHTML = '';
+                                indexLocList.classList.add('hidden');
+                                const work = (async () => {
+                                    try {
+                                        const r = await fetch(`/api/v1/public/places/details?place_id=${encodeURIComponent(place.placeId)}`);
+                                        if (r.ok && indexLocPending === work) {
+                                            const d = await r.json();
+                                            indexLocLat.value = d.lat;
+                                            indexLocLon.value = d.lon;
+                                        }
+                                    } catch (e) { console.error('Erreur details:', e); }
+                                })();
+                                indexLocPending = work;
+                            });
+                            indexLocList.appendChild(li);
+                        });
+                        indexLocList.classList.remove('hidden');
+                    } else {
+                        indexLocList.classList.add('hidden');
+                    }
+                } catch (e) {
+                    console.error('Erreur loc:', e);
+                }
+            }, 300);
+        });
+
+        function clearIndexLocation() {
+            indexLocInput.value = '';
+            indexLocLat.value = '';
+            indexLocLon.value = '';
+            indexClearLocBtn.classList.add('hidden');
+            indexLocList.classList.add('hidden');
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target !== indexLocInput && e.target !== indexLocList) {
+                indexLocList.classList.add('hidden');
+            }
+            if (e.target !== indexInputField && e.target !== indexAutocompleteList) {
+                indexAutocompleteList.classList.add('hidden');
+            }
+        });
+
+        // ─── TRANSFERT VERS LA PAGE DE RECHERCHE ─────────────────────────
+        async function passerALaRecherche() {
+            // S'il y a du texte non validé dans l'input, on l'ajoute d'abord
+            const val = document.getElementById('indexMedicamentInput').value.trim();
+            if (val) {
+                addIndexMedicament();
+            }
+
+            // S'il n'y a toujours rien, on ne fait rien ou on affiche une erreur
+            if (indexMedicaments.length === 0) {
+                alert("Veuillez saisir au moins un médicament.");
+                return;
+            }
+
+            // Sauvegarder dans localStorage
+            localStorage.setItem('pharma_pending_medicaments', JSON.stringify(indexMedicaments));
+            localStorage.setItem('pharma_auto_search', 'true'); // Flag to auto-start the search
+            
+            // Lieu choisi : on attend ses coordonnées si elles arrivent encore (sinon la recherche partirait du GPS)
+            if (indexLocPending) { try { await indexLocPending; } catch (e) {} }
+
+            // Position : lieu (nom + coordonnées), ou lieu tapé sans coordonnées (résolu sur la page de recherche),
+            // ou rien = GPS du patient
+            const locText = indexLocInput.value.trim();
+            if (locText) {
+                localStorage.setItem('pharma_loc_name', locText);
+                if (indexLocLat.value && indexLocLon.value) {
+                    localStorage.setItem('pharma_loc_lat', indexLocLat.value);
+                    localStorage.setItem('pharma_loc_lon', indexLocLon.value);
+                } else {
+                    localStorage.removeItem('pharma_loc_lat');
+                    localStorage.removeItem('pharma_loc_lon');
+                }
+            } else {
+                localStorage.removeItem('pharma_loc_name');
+                localStorage.removeItem('pharma_loc_lat');
+                localStorage.removeItem('pharma_loc_lon');
+            }
+
+            // Rediriger
+            window.location.href = '/recherche-medicaments';
+        }
+
+        // ─── COOKIE CONSENT LOGIC ────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            const consentGiven = localStorage.getItem('pharma_cookie_consent');
+            const modal = document.getElementById('cookieConsentModal');
+            const modalContent = document.getElementById('cookieConsentContent');
+            
+            if (!consentGiven) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-95');
+                    modalContent.classList.add('scale-100');
+                }, 100);
+            }
+        });
+
+        function handleCookieConsent(action) {
+            if (action === 'details') {
+                alert("Redirection vers la page détaillée des paramètres de cookies...");
+                return;
+            }
+
+            localStorage.setItem('pharma_cookie_consent', action);
+            
+            const modal = document.getElementById('cookieConsentModal');
+            const modalContent = document.getElementById('cookieConsentContent');
+            
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300);
+        }
+    </script>
+</body>
+</html>

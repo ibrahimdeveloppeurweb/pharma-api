@@ -166,43 +166,58 @@ class DemandeManager
             );
         }
 
-        // if (!$pharmacie->getAbonnement() || !$pharmacie->getAbonnement()->isActif()) {
-        //     throw new ExceptionApi(
-        //         "Votre abonnement n'est pas actif. Veuillez renouveler votre abonnement pour continuer",
-        //         ["msg" => "Votre abonnement n'est pas actif.  Veuillez renouveler votre abonnement pour continuer."],
-        //         Response::HTTP_UNPROCESSABLE_ENTITY
-        //     );
-        // }
-
         $telephone = $demande->getPatient()->getTelephone();
         $message = sprintf(
             "Bonjour %s, votre demande de medicament est disponible a la pharmacie.",
-            $demande->getPatient()->getNom() // ou adapte selon ton entité
+            $demande->getPatient()->getNom()
         );
         $telephone = "+225".$telephone;
-        // 🔹 Envoi du SMS
-       $result = $this->smsServiceEvent->sendSms($telephone, $message);
-        // 🔹 Vérification du résultat
+        
+        $result = $this->smsServiceEvent->sendSms($telephone, $message);
+        
         if (empty($result['success']) || $result['success'] === false) {
-            $errorMessage = $result['error'] ?? (
-                $result['response']['error'] ?? 'Erreur inconnue lors de l’envoi du SMS.'
-            );
-
-            throw new ExceptionApi(
-                "Échec d’envoi du SMS.",
-                [
-                    "msg" => $errorMessage,
-                    "status_code" => $result['status_code'] ?? null,
-                    "telephone" => $telephone,
-                    "response" => $result['response'] ?? null,
-                ],
-                Response::HTTP_UNPROCESSABLE_ENTITY
-            );
+            $errorMessage = $result['error'] ?? ($result['response']['error'] ?? 'Erreur inconnue lors de l’envoi du SMS.');
+            throw new ExceptionApi("Échec d’envoi du SMS.", ["msg" => $errorMessage], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // 🔹 Si le SMS a été bien envoyé
         $demande->setSmsEnvoye(true);
         $demande->setSmsStatut('envoye');
+        $demande->setTentativesNotification($demande->getTentativesNotification() + 1);
+        $demande->setStatut(Demande::STATUT_NOTIFIE);
+
+        $this->em->persist($demande);
+        $this->em->flush();
+
+        return $demande;
+    }
+
+    /**
+     * Renotifier le patient (permet plusieurs envois)
+     * @param string $uuid
+     * @throws ExceptionApi
+     * @return Demande
+     */
+    public function renotifierPatient(string $uuid , Pharmacie $pharmacie): Demande
+    {
+        $demande = $this->demandeRepository->findOneByUuid($uuid);
+        if (!$demande) {
+            throw new ExceptionApi("Demande introuvable.", ["msg" => "Demande introuvable."], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $telephone = $demande->getPatient()->getTelephone();
+        $message = sprintf(
+            "Bonjour %s, ceci est un rappel : votre demande de medicament est disponible a la pharmacie.",
+            $demande->getPatient()->getNom()
+        );
+        $telephone = "+225".$telephone;
+        
+        $result = $this->smsServiceEvent->sendSms($telephone, $message);
+        
+        if (empty($result['success']) || $result['success'] === false) {
+            $errorMessage = $result['error'] ?? ($result['response']['error'] ?? 'Erreur inconnue lors de l’envoi du SMS.');
+            throw new ExceptionApi("Échec d’envoi du SMS de rappel.", ["msg" => $errorMessage], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $demande->setTentativesNotification($demande->getTentativesNotification() + 1);
         $demande->setStatut(Demande::STATUT_NOTIFIE);
 
@@ -479,7 +494,7 @@ class DemandeManager
         $transitionsAutorisees = [
             Demande::STATUT_EN_ATTENTE => [Demande::STATUT_DISPONIBLE, Demande::STATUT_ANNULE],
             Demande::STATUT_DISPONIBLE => [Demande::STATUT_NOTIFIE, Demande::STATUT_ANNULE],
-            Demande::STATUT_NOTIFIE => [Demande::STATUT_RECUPERE, Demande::STATUT_ANNULE],
+            Demande::STATUT_NOTIFIE => [Demande::STATUT_NOTIFIE, Demande::STATUT_RECUPERE, Demande::STATUT_ANNULE],
             Demande::STATUT_RECUPERE => [],
             Demande::STATUT_ANNULE => [],
         ];
@@ -627,6 +642,7 @@ class DemandeManager
         $en_attente = 0;
         $notifie = 0;
         $recupere = 0;
+        $annule = 0;
         $demandes = $this->demandeRepository->findIndex($data,null,$pharmacie);
 
         $data->count = 4;
@@ -642,6 +658,9 @@ class DemandeManager
             if ($item->getStatut() === Demande::STATUT_RECUPERE) {
                 $recupere += 1;
             }
+            if ($item->getStatut() === Demande::STATUT_ANNULE) {
+                $annule += 1;
+            }
         }
          
         $datas['widget']['total'] = (count($demandes));
@@ -649,6 +668,7 @@ class DemandeManager
         $datas['widget']['en_attente'] = $en_attente;
         $datas['widget']['notifie'] = $notifie;
         $datas['widget']['recupere'] = $recupere;
+        $datas['widget']['annule'] = $annule;
         $datas['demandes'] = $demandesQ;
        
       

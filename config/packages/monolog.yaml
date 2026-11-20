@@ -6,10 +6,13 @@ when@dev:
     monolog:
         handlers:
             main:
-                type: stream
+                # Rotation (3 fichiers) et niveau info : en debug, le journal atteignait 280 Mo en une journée
+                # (chaque requête écrit des milliers de lignes), ce qui ralentit l'API et les recherches.
+                type: rotating_file
+                max_files: 3
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
-                level: debug
-                channels: ["!event"]
+                level: info
+                channels: ["!event", "!doctrine", "!security"]
             # uncomment to get logging in your browser
             # you may have to allow bigger header sizes in your Web server configuration
             #firephp:

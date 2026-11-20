@@ -1,20 +1,89 @@
-
 services:
-###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-16}-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
+
+  # ─── Application Symfony (pharma-api) ────────────────────
+  pharma_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pharma_app
+    ports:
+      - "8000:8000"
     volumes:
-      - database_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+      - .:/var/www/app
+      - /var/www/app/vendor
+      - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+      - ./docker/php/opcache.ini:/usr/local/etc/php/conf.d/zz-opcache.ini:ro
+      # Cache/logs Symfony dans un volume Docker (le dossier monté depuis Windows est très lent en lecture/écriture)
+      - /var/www/app/var
+    environment:
+      APP_ENV: dev
+      # Debug coupé : en mode debug Symfony revérifie la fraîcheur de tous ses fichiers à CHAQUE requête
+      # (très lent avec les fichiers Windows). Après une modification de config : docker compose exec pharma_api php bin/console cache:clear
+      APP_DEBUG: "0"
+      DATABASE_URL: "mysql://root:root@database:3306/db_alerte_pharma?serverVersion=8.0.32&charset=utf8mb4"
+      PHP_CLI_SERVER_WORKERS: "4"
+      # Mercure : l'API publie vers le hub (réseau Docker) ; le téléphone écoute via l'IP du PC
+      MERCURE_URL: "http://mercure:80/.well-known/mercure"
+      MERCURE_PUBLIC_URL: "http://192.168.100.10:3000/.well-known/mercure"
+      MERCURE_JWT_SECRET: "pharma-alerte-mercure-dev-secret-key-2024-change-me-in-prod"
+    # --no-scripts : évite les erreurs intermittentes du bind mount Windows
+    command: sh -c "composer install --prefer-dist --no-interaction --no-scripts && php -S 0.0.0.0:8000 -t public/"
+    depends_on:
+      database:
+        condition: service_healthy
+      mercure:
+        condition: service_started
+
+  # ─── Base de données MySQL ───────────────────────────────
+  database:
+    image: docker.io/library/mysql:8
+    container_name: pharma_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db_alerte_pharma
+      MYSQL_USER: pharma
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ─── Mercure (push temps réel vers les pharmacies connectées) ───
+  # Les alertes sont des mises à jour PRIVÉES : seul un pharmacien muni d'un jeton d'abonnement
+  # (délivré par l'API pour SA pharmacie) peut les lire. Pas de mode anonyme.
+  mercure:
+    image: docker.io/dunglas/mercure:latest
+    container_name: pharma_mercure
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: ":80"
+      MERCURE_PUBLISHER_JWT_KEY: "pharma-alerte-mercure-dev-secret-key-2024-change-me-in-prod"
+      MERCURE_SUBSCRIBER_JWT_KEY: "pharma-alerte-mercure-dev-secret-key-2024-change-me-in-prod"
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins "*"
+        protocol_version_compatibility 8
+    ports:
+      - "3000:80"
+
+  # ─── phpMyAdmin (interface graphique MySQL) ──────────────
+  phpmyadmin:
+    image: docker.io/library/phpmyadmin:latest
+    container_name: pharma_phpmyadmin
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "8080:80"
+    depends_on:
+      - database
 
 volumes:
-###> doctrine/doctrine-bundle ###
-  database_data:
-###< doctrine/doctrine-bundle ###
+  mysql_data:

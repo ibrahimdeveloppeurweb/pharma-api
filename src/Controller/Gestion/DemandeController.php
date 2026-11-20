@@ -264,10 +264,51 @@ class DemandeController extends AbstractController
     public function notifier($uuid)
     {
         try {
-           
             $pharmacy = PharmacyHelper::pharmacy($this->getUser());
             $demande = $this->demandeManager->notifierPatient($uuid, $pharmacy);
             $response = (new JsonHelper($demande, 'Patient notifié avec succès', 'success', 200, []))->serialize();
+            return $this->json($response, 200, [], ['groups' => ['demande:write', 'patient', 'medicament', 'entity', 'folder']]);
+        } catch (ExceptionApi $e) {
+            $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
+            return $this->json($response, $e->getCode(), [], ['groups' => ['demande:write', 'patient', 'medicament', 'entity', 'folder']]);
+        }
+    }
+
+    #[Route("/{uuid}/renotifier", name: "renotifier_patient_demande", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/pharmacie/demande/{uuid}/renotifier",
+        summary: "Renotifier le patient",
+        parameters: [
+            new OA\Parameter(
+                name: "uuid",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Patient renotifié avec succès",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "object"),
+                        new OA\Property(property: "message", type: "string", example: "Patient renotifié avec succès"),
+                        new OA\Property(property: "type", type: "string", example: "success"),
+                        new OA\Property(property: "code", type: "integer", example: 200)
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Erreur lors de la renotification")
+        ]
+    )]
+    public function renotifier($uuid)
+    {
+        try {
+            $pharmacy = PharmacyHelper::pharmacy($this->getUser());
+            $demande = $this->demandeManager->renotifierPatient($uuid, $pharmacy);
+            $response = (new JsonHelper($demande, 'Patient renotifié avec succès', 'success', 200, []))->serialize();
             return $this->json($response, 200, [], ['groups' => ['demande:write', 'patient', 'medicament', 'entity', 'folder']]);
         } catch (ExceptionApi $e) {
             $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
@@ -362,10 +403,10 @@ class DemandeController extends AbstractController
             $motif = isset($data->motif) ? $data->motif : null;
             $demande = $this->demandeManager->annuler($uuid, $motif);
             $response = (new JsonHelper($demande, 'Demande annulée avec succès', 'success', 200, []))->serialize();
-            return $this->json($response, 200, [], ['groups' => ['demande', 'patient', 'medicament', 'file', 'folder']]);
+            return $this->json($response, 200, [], ['groups' => ['demande:write', 'patient', 'medicament', 'entity', 'folder']]);
         } catch (ExceptionApi $e) {
             $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
-            return $this->json($response, $e->getCode(), [], ['groups' => ['demande', 'patient', 'medicament', 'file', 'folder']]);
+            return $this->json($response, $e->getCode(), [], ['groups' => ['demande:write', 'patient', 'medicament', 'entity', 'folder']]);
         }
     }
 

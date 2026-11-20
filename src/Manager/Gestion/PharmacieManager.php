@@ -118,6 +118,84 @@ class PharmacieManager
     }
 
     /**
+     * Activer/Désactiver la garde d'une pharmacie
+     * @param string $uuid
+     * @throws ExceptionApi
+     * @return Pharmacie
+     */
+    public function toggleGarde(string $uuid): Pharmacie
+    {
+        $pharmacie = $this->pharmacieRepository->findOneByUuid($uuid);
+        
+        if (!$pharmacie) {
+            throw new ExceptionApi(
+                "Pharmacie introuvable.",
+                ["msg" => "Pharmacie introuvable."],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        $pharmacie->setIsDeGarde(!$pharmacie->getIsDeGarde());
+        $this->em->persist($pharmacie);
+        $this->em->flush();
+
+        return $pharmacie;
+    }
+
+    /**
+     * Activer/Désactiver la disponibilité de recherche d'une pharmacie
+     * @param string $uuid
+     * @throws ExceptionApi
+     * @return Pharmacie
+     */
+    public function toggleDispoRecherche(string $uuid): Pharmacie
+    {
+        $pharmacie = $this->pharmacieRepository->findOneByUuid($uuid);
+        
+        if (!$pharmacie) {
+            throw new ExceptionApi(
+                "Pharmacie introuvable.",
+                ["msg" => "Pharmacie introuvable."],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        $pharmacie->setIsDisponibleRecherche(!$pharmacie->getIsDisponibleRecherche());
+        $this->em->persist($pharmacie);
+        $this->em->flush();
+
+        return $pharmacie;
+    }
+
+    /**
+     * Activer/Désactiver une pharmacie
+     * @param string $uuid
+     * @throws ExceptionApi
+     * @return Pharmacie
+     */
+    public function toggleStatus(string $uuid): Pharmacie
+    {
+        $pharmacie = $this->pharmacieRepository->findOneByUuid($uuid);
+        
+        if (!$pharmacie) {
+            throw new ExceptionApi(
+                "Pharmacie introuvable.",
+                ["msg" => "Pharmacie introuvable."],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        $user = $pharmacie->getUser();
+        if ($user) {
+            $user->setIsActive(!$user->isActive());
+            $this->em->persist($user);
+            $this->em->flush();
+        }
+
+        return $pharmacie;
+    }
+
+    /**
      * Supprimer une pharmacie
      * @param string $uuid
      * @throws ExceptionApi
@@ -131,10 +209,11 @@ class PharmacieManager
             throw new ExceptionApi(
                 "Pharmacie introuvable.",
                 ["msg" => "Pharmacie introuvable."],
-                Response::HTTP_UNPROCESSABLE_ENTITY
+                Response::HTTP_NOT_FOUND
             );
         }
 
+        // Le cascade remove dans l'entité supprimera aussi l'utilisateur associé
         $this->em->remove($pharmacie);
         $this->em->flush();
     }
@@ -147,11 +226,61 @@ class PharmacieManager
      */
     private function add(object $data, Pharmacie $pharmacie): void
     {
-        $pharmacie->setNom($data->nom);
-        $pharmacie->setAdresse(isset($data->adresse) ? $data->adresse : null);
-        $pharmacie->setTelephone($data->telephone);
-        $pharmacie->setEmail($data->email ?? null);
-        $pharmacie->setVille($data->ville ?? null);
+        if (isset($data->nom)) {
+            $pharmacie->setNom($data->nom);
+        }
+        if (isset($data->adresse)) {
+            $pharmacie->setAdresse($data->adresse);
+        }
+        if (isset($data->telephone)) {
+            $pharmacie->setTelephone($data->telephone);
+        }
+        if (isset($data->email)) {
+            $pharmacie->setEmail($data->email);
+        }
+        if (isset($data->ville)) {
+            $pharmacie->setVille($data->ville);
+        }
+        if (isset($data->numero_autorisation) || isset($data->numero)) {
+            $pharmacie->setNumeroAutorisation($data->numero_autorisation ?? $data->numero);
+        }
+        if (isset($data->code_postal) || isset($data->codePostal)) {
+            $pharmacie->setCodePostal($data->code_postal ?? $data->codePostal);
+        }
+        if (isset($data->latitude) && $data->latitude !== null && $data->latitude !== '') {
+            $pharmacie->setLatitude((string) $data->latitude);
+        }
+        if (isset($data->longitude) && $data->longitude !== null && $data->longitude !== '') {
+            $pharmacie->setLongitude((string) $data->longitude);
+        }
+        if (isset($data->lieuExact) || isset($data->lieu_exact)) {
+            $pharmacie->setLieuExact($data->lieuExact ?? $data->lieu_exact);
+        }
+
+
+        // Mettre à jour l'utilisateur associé
+        if ($pharmacie->getUser()) {
+            $user = $pharmacie->getUser();
+            $userUpdated = false;
+            
+            if (isset($data->nom_pharmacien)) {
+                $user->setNom($data->nom_pharmacien);
+                $user->setPrenom($data->nom_pharmacien);
+                $userUpdated = true;
+            }
+            if (isset($data->email)) {
+                $user->setEmail($data->email);
+                $userUpdated = true;
+            }
+            if (isset($data->telephone)) {
+                $user->setTelephone($data->telephone);
+                $userUpdated = true;
+            }
+            
+            if ($userUpdated) {
+                $this->em->persist($user);
+            }
+        }
 
         $this->em->persist($pharmacie);
     }
@@ -220,12 +349,19 @@ class PharmacieManager
             $tauxPerformance = $total > 0 ? round(($recupere * 100) / $total) : 0;
 
             $pharmaciesStats[] = [
+                'id' => $pharmacie->getId(),
+                'uuid' => $pharmacie->getUuid(),
                 'nom' => $pharmacie->getNom(),
                 'ville' => $pharmacie->getVille(),
+                'adresse' => $pharmacie->getAdresse(),
+                'telephone' => $pharmacie->getTelephone(),
+                'email' => $pharmacie->getEmail(),
+                'nom_pharmacien' => $pharmacie->getUser() ? $pharmacie->getUser()->getNom() : null,
                 'demandes_notifiees' => $notifie,
                 'total_demandes' => $total,
                 'taux_performance' => $tauxPerformance,
                 'actif' => $pharmacie->getUser() ? $pharmacie->getUser()->isActive() : false,
+                'isDeGarde' => $pharmacie->getIsDeGarde(),
             ];
         }
 

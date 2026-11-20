@@ -9,6 +9,7 @@ use App\Manager\Security\UserManager;
 use App\Repository\Security\UserRepository;
 use App\Repository\Extra\PaginateRepository;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use OpenApi\Attributes as OA;
@@ -252,7 +253,15 @@ class UserController extends AbstractController
                 'role' => $user->getType(),
                 'contact' => $user->getTelephone(),
                 'adresse' => $user->getPharmacie() ? $user->getPharmacie()->getAdresse() : null,
-                'pharmacie' =>  $user->getPharmacie() ? $user->getPharmacie()->getNom() : null,
+                'pharmacie' =>  $user->getPharmacie() ? [
+                    'uuid' => $user->getPharmacie()->getUuid(),
+                    'nom' => $user->getPharmacie()->getNom(),
+                    'latitude' => $user->getPharmacie()->getLatitude(),
+                    'longitude' => $user->getPharmacie()->getLongitude(),
+                    'lieuExact' => $user->getPharmacie()->getLieuExact(),
+                    'isDeGarde' => $user->getPharmacie()->getIsDeGarde(),
+                    'isDisponibleRecherche' => $user->getPharmacie()->getIsDisponibleRecherche(),
+                ] : null,
                 'refreshToken' => $data->refreshToken,
             ];
             $this->getUser();
@@ -261,6 +270,56 @@ class UserController extends AbstractController
         } catch (ExceptionApi $e) {
             $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
             return $this->json($response, $e->getCode());
+        }
+    }
+
+    #[Route("/update-fcm-token", name: "update_fcm_token", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/user/update-fcm-token",
+        summary: "Mettre à jour le jeton Firebase (FCM) de l'utilisateur",
+        tags: ["Utilisateur"]
+    )]
+    public function updateFcmToken(
+        Request $request,
+        \Doctrine\ORM\EntityManagerInterface $em,
+        \Psr\Log\LoggerInterface $logger
+    ): JsonResponse {
+        try {
+            $user = $this->getUser();
+            if (!$user instanceof User) {
+                throw new \Exception('Utilisateur non connecté');
+            }
+
+            $content = json_decode($request->getContent(), true);
+            $token = is_array($content) ? trim((string) ($content['fcmToken'] ?? '')) : '';
+            if ($token === '') {
+                throw new \Exception('fcmToken manquant');
+            }
+
+            // Un appareil = un seul compte : si ce jeton était rattaché à un autre utilisateur
+            // (déconnexion / reconnexion avec un autre compte sur le même téléphone), on le lui
+            // retire, sinon l'ancien compte continuerait à recevoir les alertes de ce téléphone.
+            $em->createQueryBuilder()
+                ->update(User::class, 'u')
+                ->set('u.fcmToken', ':null')
+                ->where('u.fcmToken = :token')
+                ->andWhere('u != :me')
+                ->setParameter('null', null)
+                ->setParameter('token', $token)
+                ->setParameter('me', $user)
+                ->getQuery()
+                ->execute();
+
+            $user->setFcmToken($token);
+            $em->flush();
+
+            $logger->info('Jeton FCM enregistré pour l\'utilisateur #{id}.', ['id' => $user->getId()]);
+
+            return $this->json((new JsonHelper(null, 'Token FCM mis à jour', 'success', 200, []))->serialize(), 200);
+        } catch (\Exception $e) {
+            $logger->warning('Mise à jour du jeton FCM refusée : {error}', ['error' => $e->getMessage()]);
+
+            return $this->json((new JsonHelper(null, $e->getMessage(), 'error', 400, []))->serialize(), 400);
         }
     }
 

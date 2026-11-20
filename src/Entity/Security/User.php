@@ -35,7 +35,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
     #[ORM\Column(length: 180, unique: true)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:write', 'pharmacie:read'])]
     #[Assert\NotBlank(message: "L'email est obligatoire")]
     #[Assert\Email(message: "L'email {{ value }} n'est pas valide")]
     private ?string $email = null;
@@ -49,15 +49,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $plainPassword = null;
 
     #[ORM\Column(length: 100, nullable: true)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:write', 'pharmacie:read'])]
     private ?string $prenom = null;
 
     #[ORM\Column(length: 100, nullable: true)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:write', 'pharmacie:read'])]
     private ?string $nom = null;
 
     #[ORM\Column(length: 20, nullable: true)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:write', 'pharmacie:read'])]
     private ?string $telephone = null;
 
     #[ORM\Column(nullable: true)]
@@ -120,6 +120,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\ManyToOne(inversedBy: 'users')]
     private ?Pharmacie $pharmacie = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read', 'user:write'])]
+    private ?string $fcmToken = null;
 
     public function __construct()
     {
@@ -521,6 +525,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPharmacie(?Pharmacie $pharmacie): static
     {
         $this->pharmacie = $pharmacie;
+        return $this;
+    }
+
+    public function getFcmToken(): ?string
+    {
+        return $this->fcmToken;
+    }
+
+    public function setFcmToken(?string $fcmToken): static
+    {
+        $this->fcmToken = $fcmToken;
         return $this;
     }
 }

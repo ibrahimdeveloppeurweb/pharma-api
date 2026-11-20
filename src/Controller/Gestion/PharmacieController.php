@@ -184,6 +184,84 @@ class PharmacieController extends AbstractController
         }
     }
 
+    #[Route("/{uuid}/localisation", name: "update_localisation_pharmacie", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/pharmacie/{uuid}/localisation",
+        summary: "Mettre à jour la localisation GPS d'une pharmacie",
+        parameters: [
+            new OA\Parameter(
+                name: "uuid",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                type: "object",
+                properties: [
+                    new OA\Property(property: "latitude", type: "number", format: "float", example: 48.8566),
+                    new OA\Property(property: "longitude", type: "number", format: "float", example: 2.3522),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Localisation mise à jour avec succès",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "object"),
+                        new OA\Property(property: "message", type: "string", example: "Localisation mise à jour avec succès"),
+                        new OA\Property(property: "type", type: "string", example: "success"),
+                        new OA\Property(property: "code", type: "integer", example: 200)
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Données invalides"),
+            new OA\Response(response: 404, description: "Pharmacie introuvable")
+        ]
+    )]
+    public function updateLocalisation(Request $request, $uuid)
+    {
+        try {
+            $content = json_decode($request->getContent());
+
+            if (!isset($content->latitude) || !isset($content->longitude)) {
+                throw new ExceptionApi(
+                    "La latitude et la longitude sont requises.",
+                    ["msg" => "Champs latitude et longitude obligatoires."],
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+            $lat = (float) $content->latitude;
+            $lng = (float) $content->longitude;
+
+            if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                throw new ExceptionApi(
+                    "Coordonnées GPS invalides.",
+                    ["msg" => "Latitude doit être entre -90 et 90, longitude entre -180 et 180."],
+                    Response::HTTP_UNPROCESSABLE_ENTITY
+                );
+            }
+
+            // Enrichir $content avec lieuExact si fourni
+            if (isset($content->lieuExact)) {
+                $content->lieu_exact = $content->lieuExact;
+            }
+
+            $pharmacie = $this->pharmacieManager->update($content, $uuid);
+            $response = (new JsonHelper($pharmacie, 'Localisation mise à jour avec succès', 'success', 200, []))->serialize();
+            return $this->json($response, 200, [], ['groups' => ['pharmacie:read', 'entity']]);
+        } catch (ExceptionApi $e) {
+            $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
+            return $this->json($response, $e->getCode(), [], ['groups' => ['pharmacie:read']]);
+        }
+    }
+
     #[Route("/{uuid}/delete", name: "delete_pharmacie", methods: ["DELETE"])]
     #[OA\Delete(
         path: "/api/v1/secure/pharmacie/{uuid}/delete",
@@ -223,6 +301,129 @@ class PharmacieController extends AbstractController
             return $this->json($response, $e->getCode(), [], ['groups' => ['pharmacie', 'entity', 'file', 'folder']]);
         }
         return $this->json($response, 200, [], ['groups' => ['pharmacie', 'entity', 'file', 'folder']]);
+    }
+
+    #[Route("/{uuid}/toggle-garde", name: "toggle_garde_pharmacie", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/pharmacie/{uuid}/toggle-garde",
+        summary: "Activer ou désactiver la garde d'une pharmacie",
+        parameters: [
+            new OA\Parameter(
+                name: "uuid",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Statut de garde modifié avec succès",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "object"),
+                        new OA\Property(property: "message", type: "string", example: "Statut de garde de la pharmacie modifié avec succès"),
+                        new OA\Property(property: "type", type: "string", example: "success"),
+                        new OA\Property(property: "code", type: "integer", example: 200)
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Erreur lors du changement de statut de garde")
+        ]
+    )]
+    public function toggleGarde($uuid)
+    {
+        try {
+            $pharmacie = $this->pharmacieManager->toggleGarde($uuid);
+            $response = (new JsonHelper($pharmacie, 'Statut de garde de la pharmacie modifié avec succès', 'success', 200, []))->serialize();
+            return $this->json($response, 200, [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        } catch (ExceptionApi $e) {
+            $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
+            return $this->json($response, $e->getCode(), [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        }
+    }
+
+    #[Route("/{uuid}/toggle-dispo-recherche", name: "toggle_dispo_recherche_pharmacie", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/pharmacie/{uuid}/toggle-dispo-recherche",
+        summary: "Activer ou désactiver la disponibilité de recherche d'une pharmacie",
+        parameters: [
+            new OA\Parameter(
+                name: "uuid",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Statut de disponibilité modifié avec succès",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "object"),
+                        new OA\Property(property: "message", type: "string", example: "Statut de disponibilité de la pharmacie modifié avec succès"),
+                        new OA\Property(property: "type", type: "string", example: "success"),
+                        new OA\Property(property: "code", type: "integer", example: 200)
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Erreur lors du changement de statut de disponibilité")
+        ]
+    )]
+    public function toggleDispoRecherche($uuid)
+    {
+        try {
+            $pharmacie = $this->pharmacieManager->toggleDispoRecherche($uuid);
+            $response = (new JsonHelper($pharmacie, 'Statut de disponibilité de la pharmacie modifié avec succès', 'success', 200, []))->serialize();
+            return $this->json($response, 200, [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        } catch (ExceptionApi $e) {
+            $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
+            return $this->json($response, $e->getCode(), [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        }
+    }
+
+    #[Route("/{uuid}/toggle-status", name: "toggle_status_pharmacie", methods: ["POST"])]
+    #[OA\Post(
+        path: "/api/v1/secure/pharmacie/{uuid}/toggle-status",
+        summary: "Activer ou désactiver une pharmacie",
+        parameters: [
+            new OA\Parameter(
+                name: "uuid",
+                in: "path",
+                required: true,
+                schema: new OA\Schema(type: "string")
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: "Statut modifié avec succès",
+                content: new OA\JsonContent(
+                    type: "object",
+                    properties: [
+                        new OA\Property(property: "data", type: "object"),
+                        new OA\Property(property: "message", type: "string", example: "Statut de la pharmacie modifié avec succès"),
+                        new OA\Property(property: "type", type: "string", example: "success"),
+                        new OA\Property(property: "code", type: "integer", example: 200)
+                    ]
+                )
+            ),
+            new OA\Response(response: 400, description: "Erreur lors du changement de statut")
+        ]
+    )]
+    public function toggleStatus($uuid)
+    {
+        try {
+            $pharmacie = $this->pharmacieManager->toggleStatus($uuid);
+            $response = (new JsonHelper($pharmacie, 'Statut de la pharmacie modifié avec succès', 'success', 200, []))->serialize();
+            return $this->json($response, 200, [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        } catch (ExceptionApi $e) {
+            $response = (new JsonHelper(null, $e->getMessage(), 'bad_request', $e->getCode(), $e->getErrors()))->serialize();
+            return $this->json($response, $e->getCode(), [], ['groups' => ['pharmacie:read', 'entity', 'file', 'folder']]);
+        }
     }
 
     #[Route("/plus-actives", name: "list_pharmacies_plus_actives", methods: ["GET"])]

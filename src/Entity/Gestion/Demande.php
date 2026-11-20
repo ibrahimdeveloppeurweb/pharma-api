@@ -489,6 +489,14 @@ class Demande
             ];
         }
 
+        // Si annulée
+        if ($this->statut === self::STATUT_ANNULE && !empty($this->updatedAt)) {
+            $tmp['historique'][] = [
+                'date' => $this->updatedAt->format('Y-m-d H:i:s'),
+                'message' => 'Demande annulée',
+            ];
+        }
+
         // Informations sur les demandeMedicaments - toujours un tableau
         $tmp['demandeMedicaments'] = [];
         foreach ($this->demandeMedicaments as $demandeMedicament) {

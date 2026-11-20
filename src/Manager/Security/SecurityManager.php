@@ -115,6 +115,13 @@ class SecurityManager
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
         }
+
+        // Mise à jour automatique du FCM token à chaque connexion (s'il est fourni)
+        if (isset($body['fcmToken']) && !empty($body['fcmToken'])) {
+            $user->setFcmToken($body['fcmToken']);
+            $this->em->persist($user);
+            $this->em->flush();
+        }
       
         $this->username = $user->getEmail();
         $roles = $user->getRoles();
@@ -214,7 +221,7 @@ class SecurityManager
         try {
             $token = $this->jwtManager->create($user);
         } catch (\Exception $e) {
-            $token = null;
+            throw new ExceptionApi("Erreur lors de la création du token JWT : " . $e->getMessage(), 500);
         }
 
         $userModel = new UserModel();
@@ -246,7 +253,15 @@ class SecurityManager
                 'role' => $user->getType(),
                 'contact' => $user->getTelephone(),
                 'adresse' => $user->getPharmacie() ? $user->getPharmacie()->getAdresse() : null,
-                'pharmacie' =>  $user->getPharmacie() ? $user->getPharmacie()->getNom() : null,
+                'pharmacie' =>  $user->getPharmacie() ? [
+                    'uuid' => $user->getPharmacie()->getUuid(),
+                    'nom' => $user->getPharmacie()->getNom(),
+                    'latitude' => $user->getPharmacie()->getLatitude(),
+                    'longitude' => $user->getPharmacie()->getLongitude(),
+                    'lieuExact' => $user->getPharmacie()->getLieuExact(),
+                    'isDeGarde' => $user->getPharmacie()->getIsDeGarde(),
+                    'isDisponibleRecherche' => $user->getPharmacie()->getIsDisponibleRecherche(),
+                ] : null,
                 'refreshToken' => $this->refreshToken,
             ]
         ];

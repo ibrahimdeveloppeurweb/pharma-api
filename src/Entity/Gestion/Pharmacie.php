@@ -7,6 +7,7 @@ use App\Traits\EntityTrait;
 use App\Entity\Security\User;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -42,8 +43,16 @@ class Pharmacie
     private ?string $email = null;
 
     #[ORM\Column(length: 100, nullable: true)]
-    #[Groups(['pharmacie:read', 'pharmacie:write'])]
+    #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
     private ?string $numeroAutorisation = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['pharmacie', 'pharmacie:read', 'pharmacie:write', 'user:read'])]
+    private bool $isDeGarde = false;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    #[Groups(['pharmacie', 'pharmacie:read', 'pharmacie:write', 'user:read'])]
+    private bool $isDisponibleRecherche = true;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
@@ -53,8 +62,24 @@ class Pharmacie
     #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
     private ?string $codePostal = null;
 
-    #[ORM\OneToOne(inversedBy: 'pharmacie', cascade: ['persist', 'remove'])]
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
+    private ?string $latitude = null;
+
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 7, nullable: true)]
+    #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
+    private ?string $longitude = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    #[Groups(['pharmacie:read', 'pharmacie:write', 'user:read'])]
+    private ?string $lieuExact = null; // Ex: "En face du marché central, porte bleue"
+
+
+    // Relation à sens unique : User::$pharmacie est un ManyToOne (plusieurs utilisateurs par pharmacie), donc
+    // il n'existe pas de côté inverse « pharmacie » sur User (l'ancien inversedBy rendait le mapping invalide).
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['pharmacie:read'])]
     private ?User $user = null;
 
 
@@ -90,6 +115,7 @@ class Pharmacie
     private Collection $historiqueAbonnements;
 
     #[ORM\OneToOne(mappedBy: 'pharmacie', cascade: ['persist', 'remove'])]
+    #[Groups(['pharmacie:read'])]
     private ?Abonnement $abonnement = null;
 
     public function __construct()
@@ -123,7 +149,7 @@ class Pharmacie
         return $this->adresse;
     }
 
-    public function setAdresse(string $adresse): static
+    public function setAdresse(?string $adresse): static
     {
         $this->adresse = $adresse;
         return $this;
@@ -131,10 +157,13 @@ class Pharmacie
 
     public function getTelephone(): ?string
     {
+        if ((!$this->telephone || empty($this->telephone)) && $this->user) {
+            return $this->user->getTelephone();
+        }
         return $this->telephone;
     }
 
-    public function setTelephone(string $telephone): static
+    public function setTelephone(?string $telephone): static
     {
         $this->telephone = $telephone;
         return $this;
@@ -142,6 +171,9 @@ class Pharmacie
 
     public function getEmail(): ?string
     {
+        if ((!$this->email || empty($this->email)) && $this->user) {
+            return $this->user->getEmail();
+        }
         return $this->email;
     }
 
@@ -184,6 +216,61 @@ class Pharmacie
         return $this;
     }
 
+    public function getLatitude(): ?string
+    {
+        return $this->latitude;
+    }
+
+    public function setLatitude(?string $latitude): static
+    {
+        $this->latitude = $latitude;
+        return $this;
+    }
+
+    public function getLongitude(): ?string
+    {
+        return $this->longitude;
+    }
+
+    public function setLongitude(?string $longitude): static
+    {
+        $this->longitude = $longitude;
+        return $this;
+    }
+
+    public function getLieuExact(): ?string
+    {
+        return $this->lieuExact;
+    }
+
+    public function setLieuExact(?string $lieuExact): static
+    {
+        $this->lieuExact = $lieuExact;
+        return $this;
+    }
+
+
+    public function getIsDeGarde(): bool
+    {
+        return $this->isDeGarde;
+    }
+
+    public function setIsDeGarde(bool $isDeGarde): static
+    {
+        $this->isDeGarde = $isDeGarde;
+        return $this;
+    }
+
+    public function getIsDisponibleRecherche(): bool
+    {
+        return $this->isDisponibleRecherche;
+    }
+
+    public function setIsDisponibleRecherche(bool $isDisponibleRecherche): static
+    {
+        $this->isDisponibleRecherche = $isDisponibleRecherche;
+        return $this;
+    }
 
     public function getUser(): ?User
     {

@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmaAlert - Résultats de recherche</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        pharma: {
+                            green: '#0f5b46',
+                            greenDark: '#0a4b39',
+                            greenLight: '#eef6f4',
+                            orange: '#f26941',
+                            cream: '#fdfbf6',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #fdfbf6; overflow: hidden; }
+
+        /* Custom map markers */
+        .custom-marker {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
+        }
+        .custom-marker.dispo { background-color: #0f5b46; color: white; }
+        .custom-marker.limite { background-color: #f26941; color: white; }
+        .custom-marker.indispo { background-color: #9ca3af; color: white; }
+
+        .leaflet-marker-icon:hover {
+            transform: scale(1.1);
+            z-index: 1000 !important;
+        }
+
+        /* Pulse animation for user marker */
+        .user-marker {
+            width: 16px;
+            height: 16px;
+            background-color: #f26941;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 0 rgba(242, 105, 65, 0.7);
+            animation: pulse-orange 2s infinite;
+        }
+        @keyframes pulse-orange {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(242, 105, 65, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(242, 105, 65, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(242, 105, 65, 0); }
+        }
+
+        /* Scrollbar styles for the sidebar */
+        .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
+    </style>
+</head>
+<body class="font-sans antialiased h-[100dvh] flex flex-col text-gray-800">
+
+    <!-- Top Navigation (Fixed) -->
+    <nav class="relative z-50 w-full py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100 bg-white">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2">
+            <img src="{{ asset('images/logo.png') }}" alt="PharmaAlert Logo" class="h-10">
+            <span class="text-xl font-serif font-bold text-pharma-green">Pharma<span class="text-pharma-orange italic">Alert</span></span>
+        </a>
+
+        <!-- Links (Desktop) -->
+        <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+            <a href="/recherche-medicaments" class="text-pharma-green font-semibold">Rechercher</a>
+            <a href="/pharmacies-garde" class="hover:text-pharma-green transition-colors">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="hover:text-pharma-green transition-colors">Prix</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Aide</a>
+            <a href="#" class="hover:text-pharma-green transition-colors">Pour pharmacies</a>
+        </div>
+
+        <!-- CTA (Desktop) -->
+        <div class="hidden md:flex items-center gap-6">
+            <a href="#" class="bg-pharma-green text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-pharma-greenDark transition-colors shadow-sm">
+                Installer l'app
+            </a>
+        </div>
+
+        <!-- Mobile menu button -->
+        <button onclick="toggleMobileMenu()" class="md:hidden text-gray-600 focus:outline-none p-2">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobileMenu" class="hidden absolute top-full left-0 w-full bg-white border-b border-gray-100 shadow-xl flex-col z-50">
+            <a href="/recherche-medicaments" class="px-6 py-4 text-pharma-green font-semibold border-b border-gray-50">Rechercher</a>
+            <a href="/pharmacies-garde" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Pharmacies de garde</a>
+            <a href="/estimation-prix" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Prix</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Aide</a>
+            <a href="#" class="px-6 py-4 text-gray-600 hover:text-pharma-green border-b border-gray-50">Pour pharmacies</a>
+            <div class="px-6 py-4 flex flex-col gap-3 bg-gray-50">
+                <a href="#" class="bg-pharma-green text-white px-5 py-3 rounded-xl text-center font-medium">Installer l'app</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+            }
+        }
+    </script>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex relative overflow-hidden">
+
+        <!-- Right Map (Background on Mobile, Right side on Desktop) -->
+        <div class="absolute inset-0 md:relative md:flex-1 z-10 bg-[#f8f5f0]" id="map">
+            <!-- Map Legend -->
+            <div class="absolute top-4 md:bottom-8 md:top-auto left-1/2 -translate-x-1/2 bg-white px-3 md:px-5 py-2 md:py-3 rounded-full shadow-lg z-[1000] flex items-center gap-3 md:gap-6 text-xs md:text-sm font-semibold text-gray-700 w-max max-w-[90vw]">
+                <div class="flex items-center gap-1.5 md:gap-2"><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-pharma-green"></div> Disponible</div>
+                <div class="flex items-center gap-1.5 md:gap-2"><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-pharma-orange"></div> Limité</div>
+                <div class="flex items-center gap-1.5 md:gap-2"><div class="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-gray-400"></div> Indispo</div>
+            </div>
+        </div>
+
+        <!-- Left Sidebar (Bottom Drawer on Mobile, Left side on Desktop) -->
+        <div id="bottomDrawer" class="absolute bottom-0 left-0 w-full h-[85vh] bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] z-[2000] flex flex-col md:relative md:w-[420px] lg:w-[480px] md:h-full md:rounded-none md:shadow-lg border-t md:border-t-0 md:border-r border-gray-100 transition-all duration-300">
+
+            <!-- Drag Handle (Mobile Only) -->
+            <div class="md:hidden flex justify-center py-3 w-full shrink-0 cursor-pointer" id="drawerHandle">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+
+            <!-- STATE 1: SEARCH FORM -->
+            <div id="searchState" class="flex flex-col flex-1 p-6 pb-12 sidebar-scroll overflow-y-auto">
+                <h2 class="text-2xl font-serif font-bold text-pharma-green mb-2">Nouvelle recherche</h2>
+                <p class="text-gray-500 text-sm mb-6">Trouvez instantanément la pharmacie la plus proche disposant de votre médicament.</p>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Médicament(s)</label>
+                    <div class="relative">
+                        <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-pharma-green focus-within:ring-1 focus-within:ring-pharma-green">
+                            <div class="pl-4 pr-3 text-gray-400"><i class="fas fa-search"></i></div>
+                            <input type="text" id="medicamentInput" autocomplete="off" placeholder="Ex: Paracétamol 500mg" class="flex-1 py-3 outline-none text-sm font-medium text-gray-700">
+                            <button onclick="addMedicament()" class="bg-pharma-greenLight text-pharma-green px-4 py-3 hover:bg-pharma-green hover:text-white transition-colors">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <!-- Dropdown autocompletion -->
+                        <ul id="autocompleteList" class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></ul>
+                    </div>
+                </div>
+
+                <ul id="medicamentList" class="mb-6 space-y-2"></ul>
+
+                {# Scanner une ordonnance (désactivé temporairement)
+                <div class="mb-6">
+                    <div class="relative flex items-center py-2 mb-4">
+                        <div class="flex-grow border-t border-gray-200"></div>
+                        <span class="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">OU</span>
+                        <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
+
+                    <button type="button" onclick="document.getElementById('ordonnanceInput').click()" class="w-full bg-white border-2 border-dashed border-pharma-green/50 text-pharma-green hover:bg-pharma-greenLight font-semibold py-4 rounded-xl transition-colors flex flex-col items-center justify-center gap-2 group">
+                        <i class="fas fa-camera text-2xl group-hover:scale-110 transition-transform"></i>
+                        <span>Scanner une ordonnance</span>
+                        <span class="text-xs font-normal text-gray-500 text-center px-4">L'IA va extraire les médicaments automatiquement</span>
+                    </button>
+                    <input type="file" id="ordonnanceInput" accept="image/*" class="hidden" onchange="handleOrdonnanceUpload(event)">
+                </div>
+                #}
+
+                <!-- Localisation (Optionnelle) -->
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Localisation (Optionnelle)</label>
+                    <div class="relative">
+                        <div class="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-pharma-green focus-within:ring-1 focus-within:ring-pharma-green">
+                            <div class="pl-4 pr-3 text-gray-400"><i class="fas fa-map-marker-alt"></i></div>
+                            <input type="text" id="locationInput" autocomplete="off" placeholder="Où cherchez-vous ? (Ex: Cocody Angré)" class="flex-1 py-3 outline-none text-sm font-medium text-gray-700">
+                            <!-- Hidden inputs for coordinates -->
+                            <input type="hidden" id="locLat" value="">
+                            <input type="hidden" id="locLon" value="">
+                            <button onclick="clearLocation()" id="clearLocBtn" class="hidden text-gray-400 px-4 py-3 hover:text-red-500 transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <!-- Dropdown autocompletion localisation -->
+                        <ul id="locationAutocompleteList" class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto"></ul>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-info-circle"></i> Laissez vide pour utiliser votre position actuelle (GPS)</p>
+                </div>
+
+                <button onclick="lancerRecherche()" id="btnRecherche" class="w-full mt-auto bg-pharma-green hover:bg-pharma-greenDark text-white font-semibold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center">
+                    <i class="fas fa-location-arrow mr-2"></i> Lancer la recherche
+                </button>
+            </div>
+
+            <!-- STATE 2: RESULTS VIEW -->
+            <div id="resultsState" class="hidden flex-col flex-1 overflow-y-auto sidebar-scroll bg-gray-50/50">
+
+                <!-- Header in Sidebar (Now scrolls with content) -->
+                <div class="p-4 md:p-6 border-b border-gray-100 shrink-0 bg-white">
+                    <button onclick="retourRecherche()" class="text-sm font-medium text-gray-500 hover:text-pharma-green flex items-center mb-4 md:mb-6 transition-colors">
+                        <i class="fas fa-chevron-left text-xs mr-2"></i> Nouvelle recherche
+                    </button>
+
+                    <!-- Search Summary Card -->
+                    <div class="bg-pharma-greenLight rounded-2xl p-4 flex items-center mb-5 border border-pharma-green/10">
+                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-pharma-green shadow-sm mr-4 shrink-0">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="overflow-hidden flex-1">
+                            <h3 id="summaryMedNames" class="font-bold text-gray-900 text-base truncate">Doliprane 1000mg</h3>
+                            <p class="text-xs text-gray-500 truncate" id="summaryMedDetails">Recherche en cours...</p>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar text-sm font-medium">
+                        <button class="bg-pharma-green text-white px-4 py-1.5 rounded-full whitespace-nowrap shadow-sm">Tous (<span id="countAll">0</span>)</button>
+                        <button class="bg-white border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full hover:bg-gray-50 whitespace-nowrap">Disponibles (<span id="countDispo">0</span>)</button>
+                        <button class="bg-white border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full hover:bg-gray-50 whitespace-nowrap">Ouvertes</button>
+                    </div>
+                </div>
+
+                <!-- List Content -->
+                <div class="flex-1 p-4 md:p-6 pt-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-widest"><span id="resultCountTitle">0</span> PHARMACIES TROUVÉES</h4>
+                        <button class="text-xs font-semibold text-pharma-green flex items-center">Trier <i class="fas fa-caret-down ml-1"></i></button>
+                    </div>
+
+                    <!-- Loader / Timer Info -->
+                    <div id="loaderArea" class="mb-4 text-center">
+                        <div class="inline-block relative w-12 h-12 mb-2">
+                            <svg class="-rotate-90 w-full h-full" viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                                <circle id="timerRing" cx="60" cy="60" r="52" fill="none" stroke="#0f5b46" stroke-width="8" stroke-dasharray="326.7" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-1000 ease-linear"/>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center font-bold text-pharma-green text-sm" id="timerText">60</div>
+                        </div>
+                        <p class="text-xs text-gray-500"><span id="rayonInfo">Recherche aux alentours...</span> <a href="#" onclick="stopperRecherche(); return false;" class="text-red-500 font-medium underline ml-1">Arrêter</a></p>
+                    </div>
+
+                    <!-- Relaunch Area (Hidden during active search) -->
+                    <div id="relaunchArea" class="mb-4 text-center hidden">
+                        <button id="btnRelancer" onclick="lancerRecherche()" class="bg-pharma-orange text-white font-bold px-6 py-2.5 rounded-xl shadow-md hover:bg-orange-600 transition-colors text-sm w-full md:w-auto">
+                            <i class="fas fa-redo-alt mr-2"></i> Relancer la recherche
+                        </button>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="reponsesContainer" class="space-y-4 pb-10">
+                        <!-- Cards injected here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ─── RESERVATION MODAL ────────────────────────────────────────────── -->
+    <div id="reservationModal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity opacity-0">
+        <div id="reservationModalContent" class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="bg-pharma-green px-6 py-4 flex justify-between items-center text-white">
+                <h3 class="font-bold text-lg"><i class="fas fa-bell mr-2"></i> Prévenir la pharmacie</h3>
+                <button onclick="closeReservationModal()" class="text-white/70 hover:text-white transition-colors focus:outline-none">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">
+                    Vous êtes sur le point de prévenir <strong id="resModalPharmaName" class="text-gray-900">la pharmacie</strong> de votre arrivée pour acheter les médicaments recherchés.
+                </p>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Votre Nom / Prénom</label>
+                    <input type="text" id="resPatientNom" placeholder="Ex: Jean Dupont" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-pharma-green focus:border-pharma-green block px-4 py-2.5 outline-none transition-colors">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Numéro de téléphone</label>
+                    <input type="tel" id="resPatientPhone" placeholder="Ex: 01 02 03 04 05" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-pharma-green focus:border-pharma-green block px-4 py-2.5 outline-none transition-colors">
+                </div>
+
+                <input type="hidden" id="resPharmaId">
+
+                <button id="btnSubmitReservation" onclick="submitReservation()" class="w-full bg-pharma-orange text-white font-bold rounded-xl text-sm px-5 py-3 text-center shadow-md hover:bg-orange-600 focus:ring-4 focus:outline-none focus:ring-orange-300 transition-colors">
+                    <i class="fas fa-paper-plane mr-2"></i> Confirmer mon arrivée
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Chargement de Google Maps JS (pour la carte). Si la clé est refusée, la carte retombe sur OpenStreetMap.
+        window.googleMapsReady = false;
+        window.gm_authFailure = function () { window.googleMapsReady = false; console.warn('Google Maps: clé refusée, carte OpenStreetMap utilisée'); };
+        window.__gmapsLoaded = function () { window.googleMapsReady = true; };
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=__gmapsLoaded"></script>
+    <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
+    <script src="/sousQuartiers.js"></script>
+
+    <script>
+
+        // Location Autocomplete Logic
+        const locationInput = document.getElementById('locationInput');
+        const locAutocompleteList = document.getElementById('locationAutocompleteList');
+        const locLatInput = document.getElementById('locLat');
+        const locLonInput = document.getElementById('locLon');
+        const clearLocBtn = document.getElementById('clearLocBtn');
+
+        let allLocations = [];
+        // Flatten the sousQuartiers map
+        if (typeof sousQuartiers !== 'undefined') {
+            for (const commune in sousQuartiers) {
+                sousQuartiers[commune].forEach(quartier => {
+                    allLocations.push({
+                        label: `${quartier.nom}, ${commune}, Abidjan, Côte d'Ivoire`,
+                        lat: quartier.lat,
+                        lon: quartier.lon
+                    });
+                });
+            }
+        }
+
+        async function searchWithAWS(query) {
+            // Autocomplete Google Places (via le backend)
+            try {
+                const res = await fetch(`/api/v1/public/places/autocomplete?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.map(r => ({ label: r.label, placeId: r.placeId, source: 'google' }));
+                }
+            } catch (e) {
+                console.error("Google Places Error:", e);
+            }
+            return [];
+        }
+
+        let debounceTimer;
+        locationInput.addEventListener('input', function() {
+            // Le texte change : les coordonnées précédentes ne correspondent plus (sinon on chercherait ailleurs)
+            locLatInput.value = '';
+            locLonInput.value = '';
+            locationToken++;
+            pendingLocation = null;
+            clearTimeout(debounceTimer);
+            const val = this.value.trim();
+            locAutocompleteList.innerHTML = '';
+
+            if (val.length < 2) {
+                locAutocompleteList.classList.add('hidden');
+                clearLocBtn.classList.add('hidden');
+                return;
+            }
+
+            clearLocBtn.classList.remove('hidden');
+
+            debounceTimer = setTimeout(async () => {
+                const queryLower = val.toLowerCase();
+
+                // 1. Recherche Locale
+                let results = allLocations.filter(loc => loc.label.toLowerCase().includes(queryLower));
+
+                // 2. Recherche AWS (si on n'a pas beaucoup de résultats locaux, on interroge AWS pour trouver les autres villes de CIV)
+                locAutocompleteList.innerHTML = '<li class="px-4 py-3 text-sm text-gray-500 text-center"><i class="fas fa-spinner fa-spin mr-2"></i> Recherche en cours...</li>';
+                locAutocompleteList.classList.remove('hidden');
+
+                const awsResults = await searchWithAWS(val);
+                results = [...results, ...awsResults];
+
+                // 3. Déduplication (basée sur label ou coordonnées proches)
+                const uniqueResults = [];
+                results.forEach(res => {
+                    const isDuplicate = uniqueResults.some(existing =>
+                        existing.label === res.label || (Math.abs(existing.lat - res.lat) < 0.001 && Math.abs(existing.lon - res.lon) < 0.001)
+                    );
+                    if (!isDuplicate) {
+                        uniqueResults.push(res);
+                    }
+                });
+
+                // Limiter à 8 résultats max
+                const finalMatches = uniqueResults.slice(0, 8);
+
+                locAutocompleteList.innerHTML = '';
+                if (finalMatches.length > 0) {
+                    finalMatches.forEach(match => {
+                        const li = document.createElement('li');
+                        li.className = 'px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700 border-b border-gray-100 last:border-0 flex items-center';
+                        li.innerHTML = `<i class="fas fa-map-marker-alt text-gray-300 mr-3"></i> <span class="truncate">${match.label}</span>`;
+                        li.onclick = () => selectLocation(match);
+                        locAutocompleteList.appendChild(li);
+                    });
+                } else {
+                    locAutocompleteList.innerHTML = '<li class="px-4 py-3 text-sm text-gray-500 text-center">Aucun résultat trouvé</li>';
+                }
+            }, 500); // 500ms debounce
+        });
+
+        // Résolution (réseau) des coordonnées d'un lieu choisi : la recherche l'attend avant de partir.
+        let pendingLocation = null;
+        let locationToken = 0; // invalide les résolutions devenues périmées (nouveau choix, saisie, effacement)
+
+        async function selectLocation(loc) {
+            const token = ++locationToken;
+            locationInput.value = loc.label;
+            // Jamais de coordonnées d'un ancien lieu pendant que le nouveau se résout
+            locLatInput.value = '';
+            locLonInput.value = '';
+            locAutocompleteList.classList.add('hidden');
+            clearLocBtn.classList.remove('hidden');
+
+            const work = (async () => {
+                if (loc.placeId && (loc.lat === undefined || loc.lat === null)) {
+                    try {
+                        const r = await fetch(`/api/v1/public/places/details?place_id=${encodeURIComponent(loc.placeId)}`);
+                        if (r.ok) { const d = await r.json(); loc.lat = d.lat; loc.lon = d.lon; }
+                    } catch (e) { console.error('Google Places details error:', e); }
+                }
+                // Si le patient a changé de lieu entre-temps, ce résultat est périmé : on ne l'applique pas
+                if (token !== locationToken) return;
+                locLatInput.value = loc.lat ?? '';
+                locLonInput.value = loc.lon ?? '';
+            })();
+            pendingLocation = work;
+            await work;
+            if (pendingLocation === work) pendingLocation = null;
+        }
+
+        function clearLocation() {
+            locationToken++;
+            pendingLocation = null;
+            locationInput.value = '';
+            locLatInput.value = '';
+            locLonInput.value = '';
+            clearLocBtn.classList.add('hidden');
+            locAutocompleteList.classList.add('hidden');
+        }
+
+        // Clic à l'extérieur pour fermer l'autocomplete
+        document.addEventListener('click', function(e) {
+            if (e.target !== locationInput && e.target !== locAutocompleteList) {
+                locAutocompleteList.classList.add('hidden');
+            }
+        });
+        // Bottom Drawer Logic (Mobile)
+        const drawer = document.getElementById('bottomDrawer');
+        const handle = document.getElementById('drawerHandle');
+        let isDrawerExpanded = true; // start open
+
+        if (handle) {
+            handle.addEventListener('click', () => {
+                if (window.innerWidth >= 768) return; // Only on mobile
+                if (isDrawerExpanded) {
+                    drawer.style.height = '12vh';
+                } else {
+                    drawer.style.height = '85vh';
+                }
+                isDrawerExpanded = !isDrawerExpanded;
+            });
+
+            // Handle touch swipe for drawer
+            let startY;
+            handle.addEventListener('touchstart', e => startY = e.touches[0].clientY);
+            handle.addEventListener('touchend', e => {
+                if (window.innerWidth >= 768) return;
+                const endY = e.changedTouches[0].clientY;
+                if (startY - endY > 50) {
+                    drawer.style.height = '85vh'; // Swipe up
+                    isDrawerExpanded = true;
+                } else if (endY - startY > 50) {
+                    drawer.style.height = '12vh'; // Swipe down
+                    isDrawerExpanded = false;
+                }
+            });
+        }
+
+        // ─── STATE & VARS ────────────────────────────────────────────────
+        let medicaments      = [];
+        let rechercheId      = null;
+        let clientIdentifier = null;
+        let pollInterval     = null;
+        let timerInterval    = null;
+        let tempsRestant     = 60;
+        const TIMER_MAX      = 60;
+        const CIRCUMFERENCE  = 2 * Math.PI * 52;
+
+        let userLat = 5.30966; // default Abidjan
+        let userLng = -4.01266;
+
+        let map = null;
+        let mapMarkers = {};
+        let userMarker = null;
+
+        let lastReponses = [];
+
+        // ─── INIT MAP ────────────────────────────────────────────────────
+        function initMap() {
+            if (map) return;
+            map = L.map('map', { zoomControl: false }).setView([userLat, userLng], 13);
+
+            // Fond de carte : OpenStreetMap toujours en dessous (garantit l'affichage),
+            // Google Maps par-dessus si la clé est acceptée (sinon la couche Google est retirée).
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            if (window.googleMapsReady && window.google && window.google.maps && L.gridLayer && L.gridLayer.googleMutant) {
+                try {
+                    const gLayer = L.gridLayer.googleMutant({ type: 'roadmap', maxZoom: 20 }).addTo(map);
+                    window.gm_authFailure = function () { map.removeLayer(gLayer); console.warn('Google Maps: clé refusée, OpenStreetMap utilisé'); };
+                } catch (e) {
+                    console.error('Google Maps indisponible, OSM utilisé', e);
+                }
+            }
+
+            // Add Zoom Control top right
+            L.control.zoom({ position: 'topright' }).addTo(map);
+        }
+
+        function updateUserMarker(lat, lng) {
+            if(!map) initMap();
+            userLat = lat; userLng = lng;
+            map.setView([lat, lng], 14);
+
+            if(userMarker) map.removeLayer(userMarker);
+
+            const userIcon = L.divIcon({
+                className: 'custom-user-icon',
+                html: '<div class="user-marker"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            userMarker = L.marker([lat, lng], {icon: userIcon, zIndexOffset: 1000, draggable: true}).addTo(map);
+
+            const popupContent = `
+                <div class="p-1 min-w-[150px] text-center">
+                    <h4 class="font-bold text-gray-900 mb-1 text-sm">Votre position actuelle</h4>
+                    <p class="text-[11px] text-gray-500 mb-1"><i class="fas fa-location-crosshairs opacity-50 mr-1"></i> <b>Lat:</b> <span id="userLatTxt">${lat.toFixed(6)}</span></p>
+                    <p class="text-[11px] text-gray-500 mb-2"><i class="fas fa-location-crosshairs opacity-50 mr-1"></i> <b>Lng:</b> <span id="userLngTxt">${lng.toFixed(6)}</span></p>
+                    <div class="text-[10px] text-pharma-orange bg-orange-50 p-1 rounded border border-orange-100">
+                        <i class="fas fa-hand-pointer mr-1"></i> Déplacez ce point si le GPS est imprécis
+                    </div>
+                </div>
+            `;
+            userMarker.bindPopup(popupContent);
+
+            userMarker.on('dragend', function(e) {
+                const position = e.target.getLatLng();
+                userLat = position.lat;
+                userLng = position.lng;
+                // Le patient corrige sa position sur la carte : c'est elle qui servira à (re)lancer la recherche
+                locLatInput.value = userLat;
+                locLonInput.value = userLng;
+                locationInput.value = 'Position ajustée sur la carte';
+                clearLocBtn.classList.remove('hidden');
+
+                // Mettre à jour la popup
+                if (document.getElementById('userLatTxt')) document.getElementById('userLatTxt').innerText = userLat.toFixed(6);
+                if (document.getElementById('userLngTxt')) document.getElementById('userLngTxt').innerText = userLng.toFixed(6);
+
+                // Recalculer les distances
+                if (lastReponses && lastReponses.length > 0) {
+                    renderReponses(lastReponses);
+                }
+            });
+        }
+
+        // ─── MEDICAMENTS LOGIC ───────────────────────────────────────────
+        function addMedicament(nameToAdd = null) {
+            const input = document.getElementById('medicamentInput');
+            const val = nameToAdd !== null ? nameToAdd.trim() : input.value.trim();
+            if (val && !medicaments.includes(val)) {
+                medicaments.push(val);
+                if (nameToAdd === null) input.value = '';
+                renderList();
+            }
+        }
+
+        async function handleOrdonnanceUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Show loading state
+            const uploadBtn = event.target.previousElementSibling;
+            const originalHtml = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl"></i><span>Analyse en cours...</span><span class="text-xs font-normal text-gray-500 text-center px-4">Cela peut prendre quelques secondes</span>';
+            uploadBtn.disabled = true;
+            uploadBtn.classList.add('opacity-70', 'cursor-not-allowed');
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/api/v1/public/prescription/extract?mode=exact', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    let totalAdded = 0;
+                    if (result.found && result.found.length > 0) {
+                        result.found.forEach(med => {
+                            addMedicament(med.libelle);
+                            totalAdded++;
+                        });
+                    }
+                    if (result.not_found && result.not_found.length > 0) {
+                        result.not_found.forEach(medName => {
+                            addMedicament(medName);
+                            totalAdded++;
+                        });
+                    }
+
+                    if (totalAdded > 0) {
+                        alert(`${totalAdded} médicament(s) extrait(s) de l'ordonnance avec succès !`);
+                    } else {
+                        alert("L'ordonnance a été analysée, mais aucun médicament n'a pu être extrait de l'image.");
+                    }
+                } else {
+                    alert('Erreur lors de l\'analyse: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Une erreur est survenue lors de l\'envoi de l\'image.');
+            } finally {
+                // Restore button
+                uploadBtn.innerHTML = originalHtml;
+                uploadBtn.disabled = false;
+                uploadBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                event.target.value = ''; // Reset input
+            }
+        }
+
+        function removeMedicament(index) {
+            medicaments.splice(index, 1);
+            renderList();
+        }
+
+        function renderList() {
+            const list = document.getElementById('medicamentList');
+            list.innerHTML = '';
+            medicaments.forEach((m, i) => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center bg-gray-50 text-gray-700 px-4 py-3 rounded-xl text-sm font-semibold border border-gray-100 group">
+                        <span class="flex items-center"><i class="fas fa-pills mr-3 text-gray-400"></i>${m}</span>
+                        <button onclick="removeMedicament(${i})" class="text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </li>`;
+            });
+        }
+
+        // ─── SEARCH FLOW ─────────────────────────────────────────────────
+        // ─── POSITION DE LA RECHERCHE ────────────────────────────────────
+        // Le patient peut choisir un lieu (liste) OU utiliser sa position GPS (champ laissé vide). Quelle que soit
+        // la source, c'est CETTE position qui sert à chercher les pharmacies (rayons 2, 5 puis 10 km côté serveur).
+        function validCoords(lat, lon) {
+            return Number.isFinite(lat) && Number.isFinite(lon)
+                && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && !(lat === 0 && lon === 0);
+        }
+
+        function getGpsPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("La géolocalisation n'est pas supportée par votre navigateur."));
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+                    () => reject(new Error('GPS')),
+                    { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
+                );
+            });
+        }
+
+        let lastPositionSource = null;
+        let lastPositionAccuracy = null;
+
+        async function resolveSearchPosition() {
+            // 1. Lieu choisi dans la liste : on attend ses coordonnées si elles arrivent encore
+            if (pendingLocation) { try { await pendingLocation; } catch (e) {} }
+            let lat = parseFloat(locLatInput.value), lon = parseFloat(locLonInput.value);
+            if (validCoords(lat, lon)) return { lat, lon, source: 'lieu' };
+
+            // 2. Lieu tapé sans choisir de suggestion : on prend la meilleure correspondance
+            const text = locationInput.value.trim();
+            if (text.length >= 2) {
+                const q = text.toLowerCase();
+                let match = allLocations.find(l => l.label.toLowerCase().includes(q));
+                if (!match) {
+                    const results = await searchWithAWS(text);
+                    match = results[0];
+                }
+                if (match) {
+                    await selectLocation(match);
+                    lat = parseFloat(locLatInput.value); lon = parseFloat(locLonInput.value);
+                    if (validCoords(lat, lon)) return { lat, lon, source: 'lieu' };
+                }
+                throw new Error("Lieu « " + text + " » introuvable. Choisissez un lieu dans la liste de suggestions, ou videz le champ pour utiliser votre position GPS.");
+            }
+
+            // 3. Champ vide : position GPS du patient
+            const gps = await getGpsPosition();
+            // Un ordinateur n'a pas de vraie puce GPS : il se place d'après le Wi-Fi / l'adresse IP, parfois à
+            // plusieurs km. Au-delà de 1,5 km d'incertitude, on prévient avant de chercher depuis une position douteuse.
+            if (gps.accuracy && gps.accuracy > 1500) {
+                const km = (gps.accuracy / 1000).toFixed(1);
+                const ok = confirm("Votre position GPS est imprécise (environ ± " + km + " km), ce qui est fréquent sur ordinateur.\n\n"
+                    + "OK = chercher quand même depuis cette position.\nAnnuler = indiquer un lieu précis dans le champ « Localisation ».");
+                if (!ok) { locationInput.focus(); throw new Error('ANNULE'); }
+            }
+            return { lat: gps.lat, lon: gps.lon, source: 'gps', accuracy: gps.accuracy };
+        }
+
+        async function lancerRecherche() {
+            if (medicaments.length === 0) { alert('Veuillez ajouter au moins un médicament.'); return; }
+
+            const btn = document.getElementById('btnRecherche');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Localisation...';
+                btn.disabled  = true;
+            }
+
+            const btnRelancer = document.getElementById('btnRelancer');
+            if (btnRelancer) {
+                btnRelancer.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Localisation...';
+                btnRelancer.disabled  = true;
+            }
+
+            try {
+                const pos = await resolveSearchPosition();
+                lastPositionSource = pos.source;
+                lastPositionAccuracy = pos.accuracy ? Math.round(pos.accuracy) : null;
+                updateUserMarker(pos.lat, pos.lon);
+                envoyerRechercheAPI(pos.lat, pos.lon);
+            } catch (e) {
+                resetBtn();
+                if (e && e.message === 'ANNULE') {
+                    // Le patient a préféré saisir un lieu : rien à signaler
+                } else if (e && e.message === 'GPS') {
+                    // Plus de recherche silencieuse depuis une position par défaut : on demande un lieu
+                    alert("Impossible d'obtenir votre position GPS. Indiquez un lieu dans le champ « Localisation » (ex : Cocody Angré), puis relancez la recherche.");
+                    locationInput.focus();
+                } else {
+                    alert(e && e.message ? e.message : 'Impossible de déterminer votre position.');
+                }
+            }
+        }
+
+        function resetBtn() {
+            const btn = document.getElementById('btnRecherche');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-location-arrow mr-2"></i> Lancer la recherche';
+                btn.disabled = false;
+            }
+
+            const btnRelancer = document.getElementById('btnRelancer');
+            if (btnRelancer) {
+                btnRelancer.innerHTML = '<i class="fas fa-redo-alt mr-2"></i> Relancer la recherche';
+                btnRelancer.disabled = false;
+            }
+        }
+
+        function retourRecherche() {
+            arreterRecherche('manual', false);
+            document.getElementById('searchState').classList.remove('hidden');
+            document.getElementById('searchState').classList.add('flex');
+            document.getElementById('resultsState').classList.add('hidden');
+            document.getElementById('resultsState').classList.remove('flex');
+            document.getElementById('reponsesContainer').innerHTML = '';
+            clearMapMarkers();
+            resetBtn();
+        }
+
+        async function envoyerRechercheAPI(lat, lng) {
+            try {
+                clientIdentifier = 'client_' + Date.now();
+                const res  = await fetch('/api/v1/public/recherche-medicament/new', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ latitude: lat, longitude: lng, medicaments, clientIdentifier, position_source: lastPositionSource, precision_m: lastPositionAccuracy })
+                });
+                const data = await res.json();
+                if (!res.ok) { alert('Erreur: ' + data.message); resetBtn(); return; }
+
+                rechercheId = data.data.recherche_id;
+                if (data.data.rayon_km && document.getElementById('rayonInfo')) {
+                    document.getElementById('rayonInfo').innerText = 'Recherche dans un rayon de ' + data.data.rayon_km + ' km...';
+                }
+
+                // UI Switch
+                document.getElementById('searchState').classList.add('hidden');
+                document.getElementById('searchState').classList.remove('flex');
+                document.getElementById('resultsState').classList.remove('hidden');
+                document.getElementById('resultsState').classList.add('flex');
+
+                // Expand drawer on mobile
+                if (window.innerWidth < 768) {
+                    drawer.style.height = '85vh';
+                    isDrawerExpanded = true;
+                }
+
+                document.getElementById('summaryMedNames').innerText = medicaments.join(', ');
+                document.getElementById('loaderArea').classList.remove('hidden');
+                document.getElementById('relaunchArea').classList.add('hidden');
+                document.getElementById('reponsesContainer').innerHTML = '';
+                clearMapMarkers();
+
+                demarrerTimer();
+                pollInterval = setInterval(fetchReponses, 2000);
+
+            } catch (e) { console.error(e); alert('Erreur de connexion.'); resetBtn(); }
+        }
+
+        // ─── TIMER LOGIC ─────────────────────────────────────────────────
+        function demarrerTimer() {
+            tempsRestant = TIMER_MAX;
+            mettreAJourTimer(tempsRestant);
+            timerInterval = setInterval(() => {
+                tempsRestant--;
+                mettreAJourTimer(tempsRestant);
+                if (tempsRestant <= 0) arreterRecherche('expired', true);
+            }, 1000);
+        }
+
+        function mettreAJourTimer(secondes) {
+            const ratio = secondes / TIMER_MAX;
+            const offset = CIRCUMFERENCE * (1 - ratio);
+            const ring = document.getElementById('timerRing');
+            ring.style.strokeDashoffset = offset;
+            document.getElementById('timerText').innerText = secondes;
+
+            if (secondes <= 10) ring.setAttribute('stroke', '#ef4444');
+            else if (secondes <= 30) ring.setAttribute('stroke', '#f97316');
+            else ring.setAttribute('stroke', '#0f5b46');
+        }
+
+        async function stopperRecherche() {
+            if (!rechercheId) return;
+            try {
+                await fetch(`/api/v1/public/recherche-medicament/${rechercheId}/stopper`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientIdentifier })
+                });
+            } catch(e) {}
+            arreterRecherche('manual', true);
+        }
+
+        function arreterRecherche(raison, fetchLast) {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+            document.getElementById('loaderArea').classList.add('hidden');
+            document.getElementById('relaunchArea').classList.remove('hidden');
+            resetBtn();
+            if(fetchLast) fetchReponses();
+        }
+
+        function notifierAnnulation() {
+            if (rechercheId && timerInterval) {
+                // Utiliser navigator.sendBeacon avec une string simple (text/plain)
+                // pour éviter la vérification CORS (preflight) qui bloque l'envoi lors du déchargement de la page.
+                const data = JSON.stringify({ clientIdentifier });
+                navigator.sendBeacon(`/api/v1/public/recherche-medicament/${rechercheId}/stopper`, data);
+            }
+        }
+
+        window.addEventListener('pagehide', notifierAnnulation);
+        window.addEventListener('beforeunload', notifierAnnulation);
+
+        // ─── POLLING & RENDERING ─────────────────────────────────────────
+        async function fetchReponses() {
+            if (!rechercheId) return;
+            try {
+                // Ajout de ?role=patient pour servir de ping au backend
+                const res  = await fetch(`/api/v1/public/recherche-medicament/${rechercheId}/reponses?role=patient`);
+                const data = await res.json();
+                if (!res.ok || !data.data) return;
+
+                const { est_active, reponses, rayon_km } = data.data;
+                if (rayon_km && document.getElementById('rayonInfo')) {
+                    document.getElementById('rayonInfo').innerText = 'Recherche dans un rayon de ' + rayon_km + ' km...';
+                }
+                lastReponses = reponses;
+                renderReponses(reponses);
+
+                if (!est_active && timerInterval) arreterRecherche('expired', false);
+            } catch (e) { console.error(e); }
+        }
+
+        // mapMarkers is declared above
+
+        // Haversine formula to calculate exact distance in km between two coordinates
+        function calcDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2-lat1)*(Math.PI/180);
+            const dLon = (lon2-lon1)*(Math.PI/180);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1*(Math.PI/180)) * Math.cos(lat2*(Math.PI/180)) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function clearMapMarkers() {
+            Object.values(mapMarkers).forEach(m => map.removeLayer(m));
+            mapMarkers = {};
+        }
+
+        function renderReponses(reponses) {
+            const container = document.getElementById('reponsesContainer');
+            document.getElementById('countAll').innerText = reponses.length;
+            document.getElementById('resultCountTitle').innerText = reponses.length;
+
+            let dispoCount = 0;
+
+            if (reponses.length === 0) {
+                container.innerHTML = `<div class="text-center py-10"><p class="text-gray-400 italic text-sm">En attente des pharmacies...</p></div>`;
+                return;
+            }
+
+            let html = '';
+            let currentPharmacies = new Set();
+
+            reponses.forEach((rep, index) => {
+                const num = index + 1;
+                // Use pharmacy name or index as unique ID if id is missing
+                const pId = rep.pharmacie_nom + '_' + index;
+                currentPharmacies.add(pId);
+
+                let statusColor = 'text-gray-500';
+                let statusDot = 'bg-gray-400';
+                let markerClass = 'indispo';
+                let statusText = rep.status || 'Indisponible';
+
+                // Determine Status formatting
+                if (['Disponible','EN STOCK','DISPONIBLE'].includes(rep.status)) {
+                    statusColor = 'text-pharma-green';
+                    statusDot = 'bg-pharma-green';
+                    markerClass = 'dispo';
+                    statusText = 'Disponible';
+                    dispoCount++;
+                } else if (['Bientôt','BIENTOT_DISPONIBLE'].includes(rep.status) || (rep.delai && rep.delai !== '')) {
+                    statusColor = 'text-pharma-orange';
+                    statusDot = 'bg-pharma-orange';
+                    markerClass = 'limite';
+                    statusText = `Stock limité`;
+                }
+
+                let detailsList = [];
+                let prixTotal = null;
+                if (rep.details) {
+                    if (Array.isArray(rep.details)) {
+                        detailsList = rep.details;
+                    } else {
+                        detailsList = rep.details.medicaments || [];
+                        prixTotal = rep.details.prix_total || null;
+                    }
+                }
+
+                if (detailsList.length > 0) {
+                    const hasDispo = detailsList.some(d => ['En stock','Disponible','EN STOCK','DISPONIBLE', 'Oui', 'oui', 'true', true].includes(d.status));
+                    if (hasDispo && markerClass !== 'dispo') {
+                        statusColor = 'text-pharma-green'; statusDot = 'bg-pharma-green'; markerClass = 'dispo'; statusText = 'Disponible'; dispoCount++;
+                    }
+                }
+
+                // Calculate Distance & Time
+                let distHtml = '';
+                // Ensure correct parsing of coordinates, even if they use commas instead of dots
+                let rawLat = String(rep.pharmacie_latitude || '').replace(',', '.');
+                let rawLng = String(rep.pharmacie_longitude || '').replace(',', '.');
+                let pLat = parseFloat(rawLat);
+                let pLng = parseFloat(rawLng);
+                const lieu = rep.pharmacie_lieu_exact || rep.pharmacie_adresse || 'Adresse inconnue';
+
+                if(!isNaN(pLat) && !isNaN(pLng) && userLat && userLng) {
+                    // 1. Calcul rapide à vol d'oiseau (Haversine) pour l'affichage immédiat
+                    let d = calcDistance(userLat, userLng, pLat, pLng);
+                    let distId = 'dist_' + pId.replace(/\W/g, ''); // ID unique pour mettre à jour le DOM plus tard
+
+                    if(d < 1) {
+                        distHtml = `<div class="font-bold text-gray-800 text-right" id="${distId}_d"><i class="fas fa-spinner fa-spin text-gray-300 text-[10px]"></i></div><div class="text-[10px] text-gray-500 text-right" id="${distId}_t">Calcul du trajet...</div>`;
+                    } else {
+                        distHtml = `<div class="font-bold text-gray-800 text-right" id="${distId}_d"><i class="fas fa-spinner fa-spin text-gray-300 text-[10px]"></i></div><div class="text-[10px] text-gray-500 text-right" id="${distId}_t">Calcul du trajet...</div>`;
+                    }
+
+                    // 2. Calcul intelligent asynchrone (Routage réel OSRM)
+                    setTimeout(async () => {
+                        try {
+                            // On choisit le mode 'foot' (à pied) si c'est très proche (< 1.5km), sinon 'driving' (voiture)
+                            const mode = d < 1.5 ? 'foot' : 'driving';
+                            const res = await fetch(`https://router.project-osrm.org/route/v1/${mode}/${userLng},${userLat};${pLng},${pLat}?overview=false`);
+                            const data = await res.json();
+
+                            const dEl = document.getElementById(`${distId}_d`);
+                            const tEl = document.getElementById(`${distId}_t`);
+
+                            if (data.code === 'Ok' && data.routes.length > 0 && dEl && tEl) {
+                                const realDistKm = data.routes[0].distance / 1000;
+                                const realTimeMin = data.routes[0].duration / 60;
+
+                                if (realDistKm < 1) {
+                                    dEl.innerText = Math.round(realDistKm * 1000) + ' m';
+                                } else {
+                                    dEl.innerText = realDistKm.toFixed(1) + ' km';
+                                }
+
+                                const icon = mode === 'foot' ? '<i class="fas fa-walking mr-1"></i>' : '<i class="fas fa-car mr-1"></i>';
+                                tEl.innerHTML = `${icon} ${Math.round(realTimeMin)} min`;
+                            } else if (dEl && tEl) {
+                                // Fallback sur Haversine si l'API échoue
+                                dEl.innerText = (d < 1) ? Math.round(d * 1000) + ' m' : d.toFixed(1) + ' km';
+                                tEl.innerText = (d < 1) ? Math.round(d * 12) + ' min à pied' : Math.round(d * 3) + ' min en voiture';
+                            }
+                        } catch (e) {
+                            // Silencieux, on garde le fallback
+                        }
+                    }, 50 * index); // Petit décalage pour ne pas spammer l'API
+
+
+                    // Map marker management (avoid recreating if exists)
+                    if(map) {
+                        const popupContent = `
+                            <div class="p-1 min-w-[150px]">
+                                <h4 class="font-bold text-gray-900 mb-1 text-sm">${rep.pharmacie_nom}</h4>
+                                <p class="text-[11px] text-gray-500 mb-2 truncate"><i class="fas fa-map-marker-alt opacity-50 mr-1"></i> ${lieu}</p>
+                                <span class="inline-block text-[11px] font-bold px-2 py-1 rounded bg-gray-50 ${statusColor}"><div class="inline-block w-1.5 h-1.5 rounded-full ${statusDot} mr-1"></div>${statusText}</span>
+                            </div>
+                        `;
+
+                        if(!mapMarkers[pId]) {
+                            const icon = L.divIcon({
+                                className: '',
+                                html: `<div class="custom-marker ${markerClass}">${num}</div>`,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16],
+                                popupAnchor: [0, -16]
+                            });
+                            const m = L.marker([pLat, pLng], {icon}).addTo(map);
+                            m.bindPopup(popupContent);
+                            mapMarkers[pId] = m;
+                        } else {
+                            // Update existing marker icon if status changed
+                            const icon = L.divIcon({
+                                className: '',
+                                html: `<div class="custom-marker ${markerClass}">${num}</div>`,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16],
+                                popupAnchor: [0, -16]
+                            });
+                            mapMarkers[pId].setIcon(icon);
+                            mapMarkers[pId].setPopupContent(popupContent);
+                        }
+                    }
+                }
+
+                // « Y aller » : l'itinéraire part de la position UTILISÉE POUR LA RECHERCHE (lieu renseigné, GPS ou marqueur
+                // ajusté), et non de la position actuelle de l'appareil que Google prendrait par défaut.
+                // Libellé du point de départ de « Y aller » (échappé : c'est un texte saisi par le patient)
+                const departRaw = (document.getElementById('locationInput').value || '').trim();
+                const departLabel = (departRaw || 'votre position GPS').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+                let mapsUrl = '#';
+                if (!isNaN(pLat) && !isNaN(pLng)) {
+                    mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${pLat},${pLng}`;
+                    if (validCoords(userLat, userLng)) {
+                        const modeGo = calcDistance(userLat, userLng, pLat, pLng) < 1.5 ? 'walking' : 'driving';
+                        mapsUrl += `&origin=${userLat},${userLng}&travelmode=${modeGo}`;
+                    }
+                }
+
+                let detailsHtml = '';
+                if (detailsList.length > 0) {
+                    detailsHtml = '<div class="mt-3 space-y-2 border-t border-gray-100 pt-3">';
+                    detailsList.forEach(d => {
+                        let dColor = 'text-gray-500';
+                        let dStatus = d.status || 'Indisponible';
+
+                        // Si le statut est positif ou 'En stock', on force l'affichage à 'Disponible' en vert
+                        if (['Disponible','EN STOCK','DISPONIBLE', 'En stock', 'disponible', 'en stock', 'Oui', 'oui', 'true', true].includes(d.status) || typeof d.status === 'undefined') {
+                            dColor = 'text-pharma-green';
+                            dStatus = 'Disponible';
+                        }
+                        else if (['Bientôt','BIENTOT_DISPONIBLE'].includes(d.status)) {
+                            dColor = 'text-pharma-orange';
+                            dStatus = 'Bientôt';
+                            if (d.delai) {
+                                dStatus += ` (dans ${d.delai})`;
+                            }
+                        }
+
+                        let prixStr = d.prix ? `<span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded ml-2">${d.prix}</span>` : '';
+
+                        detailsHtml += `
+                            <div class="flex justify-between items-center text-[12px] py-1">
+                                <span class="text-gray-600 font-medium truncate pr-2" title="${d.medicament}"><i class="fas fa-pills text-gray-300 mr-2"></i> ${d.medicament}</span>
+                                <div class="flex items-center shrink-0">
+                                    <span class="${dColor} font-bold">${dStatus}</span>
+                                    ${prixStr}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    if (prixTotal) {
+                        detailsHtml += `
+                            <div class="mt-3 bg-green-50/50 text-pharma-green font-bold text-[13px] px-3 py-2.5 rounded-lg flex justify-between items-center border border-pharma-green/20">
+                                <div class="flex items-center"><i class="fas fa-wallet mr-2 opacity-70"></i><span>Prix total estimé</span></div>
+                                <span class="text-[15px]">${new Intl.NumberFormat('fr-FR').format(prixTotal)} FCFA</span>
+                            </div>
+                        `;
+                    }
+
+                    detailsHtml += '</div>';
+                }
+
+                html += `
+                <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:border-pharma-green/30 transition-all cursor-pointer">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 rounded-full ${statusDot} text-white font-bold flex items-center justify-center shrink-0 mr-4 shadow-sm text-sm">
+                                ${num}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-900 leading-tight mb-1">${rep.pharmacie_nom}</h4>
+                                <p class="text-[11px] text-gray-500 mb-2 truncate max-w-[200px]"><i class="fas fa-map-marker-alt opacity-50 mr-1"></i> ${lieu}</p>
+
+                                <div class="inline-flex items-center text-xs font-bold ${statusColor} bg-gray-50 px-2 py-1 rounded">
+                                    <div class="w-1.5 h-1.5 rounded-full ${statusDot} mr-1.5"></div>
+                                    ${statusText}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="shrink-0 ml-3">
+                            ${distHtml}
+                        </div>
+                    </div>
+
+                    ${detailsHtml}
+
+                    <div class="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 flex-wrap">
+                        <a href="tel:${(rep.pharmacie_telephone || '').toString().replace(/[^0-9+]/g, '')}" class="flex-1 bg-pharma-green text-white font-semibold py-2 rounded-xl text-xs flex items-center justify-center hover:bg-pharma-greenDark transition-colors min-w-[100px]">
+                            <i class="fas fa-phone-alt mr-2"></i> Appeler
+                        </a>
+                        <a href="${mapsUrl}" target="_blank" class="flex-1 bg-white border border-gray-200 text-gray-700 font-semibold py-2 rounded-xl text-xs flex items-center justify-center hover:bg-gray-50 transition-colors min-w-[100px]">
+                            <i class="fas fa-location-arrow mr-2 opacity-50"></i> Y aller
+                        </a>
+                        <button onclick="openReservationModal('${rep.pharmacie_id}', '${rep.pharmacie_nom.replace(/'/g, "\\'")}')" class="flex-1 bg-pharma-orange text-white font-semibold py-2 rounded-xl text-xs flex items-center justify-center hover:bg-orange-600 transition-colors min-w-[120px]">
+                            <i class="fas fa-bell mr-2"></i> Prévenir
+                        </button>
+                        <p class="w-full text-[10px] text-gray-400 mt-1 truncate">
+                            <i class="fas fa-map-marker-alt mr-1"></i>Itinéraire depuis : ${departLabel}
+                        </p>
+                    </div>
+                </div>`;
+            });
+
+            // Remove markers that are no longer in responses
+            Object.keys(mapMarkers).forEach(id => {
+                if(!currentPharmacies.has(id)) {
+                    map.removeLayer(mapMarkers[id]);
+                    delete mapMarkers[id];
+                }
+            });
+
+            container.innerHTML = html;
+            document.getElementById('countDispo').innerText = dispoCount;
+
+            // Ensure the map shows both the user and the pharmacies
+            if(map && userLat && userLng) {
+                let bounds = L.latLngBounds([[userLat, userLng]]);
+                Object.values(mapMarkers).forEach(m => {
+                    bounds.extend(m.getLatLng());
+                });
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+        }
+
+        // Init map on load (hidden initially, but we instance it)
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+
+            // Récupération des médicaments depuis la page d'accueil
+            const pending = localStorage.getItem('pharma_pending_medicaments');
+            if (pending) {
+                try {
+                    const parsed = JSON.parse(pending);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        medicaments = parsed;
+                        renderList();
+                    }
+                } catch (e) {
+                    console.error("Erreur lecture", e);
+                }
+                localStorage.removeItem('pharma_pending_medicaments');
+            }
+
+            // Récupération de la localisation
+            const locName = localStorage.getItem('pharma_loc_name');
+            const locLat = localStorage.getItem('pharma_loc_lat');
+            const locLon = localStorage.getItem('pharma_loc_lon');
+            if (locName) {
+                document.getElementById('locationInput').value = locName;
+                // Sans coordonnées (lieu tapé à l'accueil sans choisir de suggestion), elles sont résolues au lancement
+                document.getElementById('locLat').value = locLat || '';
+                document.getElementById('locLon').value = locLon || '';
+                document.getElementById('clearLocBtn').classList.remove('hidden');
+
+                localStorage.removeItem('pharma_loc_name');
+                localStorage.removeItem('pharma_loc_lat');
+                localStorage.removeItem('pharma_loc_lon');
+            }
+
+            // Lancement automatique si demandé
+            const autoSearch = localStorage.getItem('pharma_auto_search');
+            if (autoSearch === 'true') {
+                localStorage.removeItem('pharma_auto_search');
+                // S'assurer qu'il y a des médicaments avant de lancer
+                if (medicaments.length > 0) {
+                    setTimeout(() => {
+                        lancerRecherche();
+                    }, 500); // Petit délai pour laisser la carte s'initialiser
+                }
+            }
+        });
+
+        document.getElementById('medicamentInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') addMedicament();
+        });
+
+        // ─── AUTOCOMPLETION LOGIC ────────────────────────────────────────
+        const inputField = document.getElementById('medicamentInput');
+        const autocompleteList = document.getElementById('autocompleteList');
+        let autocompleteTimeout = null;
+
+        inputField.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (val.length < 2) {
+                autocompleteList.innerHTML = '';
+                autocompleteList.classList.add('hidden');
+                return;
+            }
+
+            if (autocompleteTimeout) clearTimeout(autocompleteTimeout);
+
+            autocompleteTimeout = setTimeout(async () => {
+                // Vérifier si la valeur a changé pendant le délai
+                if (inputField.value.trim() !== val) return;
+
+                try {
+                    const res = await fetch(`/api/v1/public/recherche-medicament/autocomplete?q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+
+                    // Revérifier après le réseau
+                    if (inputField.value.trim() !== val) return;
+
+                    if (res.ok && data.data && data.data.length > 0) {
+                        autocompleteList.innerHTML = '';
+                        data.data.forEach(name => {
+                            const li = document.createElement('li');
+                            li.className = 'px-4 py-2 hover:bg-pharma-greenLight hover:text-pharma-green cursor-pointer text-sm border-b border-gray-50 last:border-0';
+                            li.innerHTML = `<i class="fas fa-pills opacity-50 mr-2"></i> ${name}`;
+                            li.addEventListener('click', () => {
+                                inputField.value = name;
+                                autocompleteList.innerHTML = '';
+                                autocompleteList.classList.add('hidden');
+                                inputField.focus(); // Garde le focus sur le champ pour éventuellement appuyer sur '+'
+                            });
+                            autocompleteList.appendChild(li);
+                        });
+                        autocompleteList.classList.remove('hidden');
+                    } else {
+                        autocompleteList.innerHTML = '';
+                        autocompleteList.classList.add('hidden');
+                    }
+                } catch (e) {
+                    console.error('Erreur autocompletion:', e);
+                }
+            }, 50); // 50ms debounce au lieu de 300ms pour une ultra-réactivité
+        });
+
+        // Cacher la liste si on clique ailleurs
+        document.addEventListener('click', function(e) {
+            if (e.target !== inputField && e.target !== autocompleteList) {
+                autocompleteList.classList.add('hidden');
+            }
+        });
+        // ─── RESERVATION LOGIC ───────────────────────────────────────────
+        function openReservationModal(pharmaId, pharmaName) {
+            document.getElementById('resPharmaId').value = pharmaId;
+            document.getElementById('resModalPharmaName').innerText = pharmaName;
+
+            const modal = document.getElementById('reservationModal');
+            const content = document.getElementById('reservationModalContent');
+
+            modal.classList.remove('hidden');
+            // Petit délai pour la transition
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeReservationModal() {
+            const modal = document.getElementById('reservationModal');
+            const content = document.getElementById('reservationModalContent');
+
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function submitReservation() {
+            const nom = document.getElementById('resPatientNom').value.trim();
+            const phone = document.getElementById('resPatientPhone').value.trim();
+            const pharmaId = document.getElementById('resPharmaId').value;
+
+            if (!nom || !phone) {
+                alert("Veuillez remplir votre nom et numéro de téléphone.");
+                return;
+            }
+
+            if (!rechercheId) {
+                alert("Erreur: ID de recherche manquant.");
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitReservation');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Envoi en cours...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/v1/public/recherche-medicament/${rechercheId}/reserver`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pharmacie_id: pharmaId,
+                        clientIdentifier: clientIdentifier,
+                        patient_nom: nom,
+                        patient_telephone: phone,
+                        medicaments: medicaments
+                    })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    alert("C'est noté ! La pharmacie a été prévenue de votre arrivée.");
+                    closeReservationModal();
+                } else {
+                    alert("Erreur: " + (data.message || "Impossible d'envoyer la demande."));
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Erreur de connexion lors de la réservation.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

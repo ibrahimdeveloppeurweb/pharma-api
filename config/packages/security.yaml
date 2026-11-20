@@ -36,21 +36,28 @@ security:
             stateless: true
             security: false
 
+        # 🌍 Firewall pour les API publiques (recherche, etc.)
+        public_api:
+            pattern: ^/api/v1/public
+            stateless: true
+            security: false
+
         # 🧱 Firewall pour toutes les routes API protégées
         api:
             pattern: ^/api
             stateless: true
+            user_checker: App\Security\UserChecker
             jwt: ~
 
     # 🧭 Règles d’accès
     access_control:
         # Routes publiques
       #  - { path: ^/    , roles: PUBLIC_ACCESS }
+        - { path: ^/api/v1/public, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/auth/token/refresh, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/auth/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/v1/auth/edit/password, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc, roles: PUBLIC_ACCESS }
-        - { path: ^/api/v1/public/pharmacie/new, roles: PUBLIC_ACCESS }
 
         # Routes sécurisées (JWT requis)
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }

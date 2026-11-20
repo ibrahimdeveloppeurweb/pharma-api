@@ -71,8 +71,11 @@ class PharmacieRepository extends ServiceEntityRepository
                 ->leftJoin('p.users', 'usr')
                 ->leftJoin('p.abonnement', 'a') 
                 ->addSelect('u.isActive AS actif')
-                ->addSelect('MAX(CASE WHEN a.actif = true THEN 1 ELSE 0 END) AS abonnementActif')  // ← Utiliser MAX
-                ->addSelect('CASE WHEN a.faveurActive = true THEN 1 ELSE 0 END AS faveurActive')
+                ->addSelect('u.telephone AS user_telephone')
+                ->addSelect('u.email AS user_email')
+                ->addSelect('a.uuid AS abonnement_uuid')
+                ->addSelect('MAX(CASE WHEN a.actif = true THEN 1 ELSE 0 END) AS abonnementActif')
+                ->addSelect('MAX(CASE WHEN a.faveurActive = true THEN 1 ELSE 0 END) AS faveurActive')
                 ->addSelect('COUNT(DISTINCT d.id) AS total_demandes')
                 ->addSelect('(SELECT COUNT(d1.id) FROM App\Entity\Gestion\Demande d1 WHERE d1.pharmacie = p AND d1.statut = \'notifie\') AS demandes_notifiees')
                 ->addSelect('(SELECT COUNT(d2.id) FROM App\Entity\Gestion\Demande d2 WHERE d2.pharmacie = p AND d2.statut = \'en_attente\') AS demandes_en_attente')
@@ -224,7 +227,11 @@ class PharmacieRepository extends ServiceEntityRepository
                 'demandes_recuperees' => (int) $row['demandes_recuperees'],
                 'abonnementActif' => (bool) $row['abonnementActif'],
                 'faveurActive' => (bool) $row['faveurActive'],
+                'abonnement_uuid' => $row['abonnement_uuid'],
             ];
+
+            $pharmacie['telephone'] = !empty($pharmacie['telephone']) ? $pharmacie['telephone'] : $row['user_telephone'];
+            $pharmacie['email'] = !empty($pharmacie['email']) ? $pharmacie['email'] : $row['user_email'];
 
             $final[] = array_merge($pharmacie, $stats);
         }
@@ -552,4 +559,40 @@ class PharmacieRepository extends ServiceEntityRepository
         return (int) $query->getQuery()->getSingleScalarResult() > 0;
     }
 
+    /**
+     * Recherche les pharmacies les plus proches en utilisant la formule de Haversine
+     * @param float $latitude
+     * @param float $longitude
+     * @param int $radiusKm
+     * @return array
+     */
+    public function findNearbyPharmacies(float $latitude, float $longitude, int $radiusKm = 10, int $limit = 20): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        
+        $sql = '
+            SELECT p.*, 
+            (6371 * acos(
+                LEAST(1.0, GREATEST(-1.0, 
+                    cos(radians(:lat)) * cos(radians(CAST(NULLIF(p.latitude, \'\') AS FLOAT))) * cos(radians(CAST(NULLIF(p.longitude, \'\') AS FLOAT)) - radians(:lng)) 
+                    + sin(radians(:lat)) * sin(radians(CAST(NULLIF(p.latitude, \'\') AS FLOAT)))
+                ))
+            )) AS distance
+            FROM pharmacie p
+            WHERE p.latitude IS NOT NULL AND p.longitude IS NOT NULL AND p.latitude != \'\' AND p.longitude != \'\'
+            AND p.is_disponible_recherche = 1
+            HAVING distance <= :radius
+            ORDER BY distance ASC
+            LIMIT ' . max(1, min(100, $limit)) . '
+        ';
+
+        $stmt = $conn->prepare($sql);
+        $result = $stmt->executeQuery([
+            'lat' => $latitude,
+            'lng' => $longitude,
+            'radius' => $radiusKm
+        ]);
+        
+        return $result->fetchAllAssociative();
+    }
 }
